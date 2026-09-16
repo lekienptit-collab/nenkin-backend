@@ -1,0 +1,60 @@
+# Ha tang cho nenkin-backend: CHI gom MySQL + Redis.
+# Backend chay truc tiep tren may bang `npm run start:dev`, khong chay trong docker.
+# Bien moi truong duoc doc tu file .env cung thu muc.
+#
+#   docker compose up -d       # bat MySQL + Redis
+#   docker compose ps          # xem trang thai
+#   docker compose down        # tat, van giu du lieu
+#   docker compose down -v     # tat va xoa sach du lieu
+name: nenkin
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: nenkin-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWROD:-nenkin}
+      MYSQL_DATABASE: ${DATABASE_NAME:-nenkin}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "${DATABASE_PORT:-33062}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DATABASE_PASSWROD:-nenkin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - nenkin
+
+  redis:
+    image: redis:7-alpine
+    container_name: nenkin-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-63791}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - nenkin
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  nenkin:
+    driver: bridge
