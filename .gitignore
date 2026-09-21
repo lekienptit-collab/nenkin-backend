@@ -7,3 +7,6 @@
 .env.local
 .DS_Store
 *.tsbuildinfo
+
+# Kho file nguoi dung tai len + PDF ho so Nenkin
+/storage

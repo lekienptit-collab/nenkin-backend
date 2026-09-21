@@ -116,10 +116,15 @@ export class UserService {
     return role;
   }
 
+  /**
+   * Tài khoản bị xoá là xoá mềm, bản ghi vẫn nằm lại trong bảng và vẫn giữ
+   * chỉ mục unique. Phải tìm cả bản ghi đã xoá (`withDeleted`), nếu không thì
+   * kiểm tra lọt và câu INSERT vỡ thành lỗi 500 thay vì báo trùng tử tế.
+   */
   private async assertUniqueUsername(username: string, excludeId?: string) {
     const where: Record<string, any> = { username };
     if (excludeId) where.id = Not(excludeId);
-    const existed = await this.userRepo.findOne({ where });
+    const existed = await this.userRepo.findOne({ where, withDeleted: true });
     if (existed) {
       throw new CBadRequestException(ErrorCode.HAVE_USERNAME);
     }
@@ -128,7 +133,7 @@ export class UserService {
   private async assertUniqueEmail(email: string, excludeId?: string) {
     const where: Record<string, any> = { email };
     if (excludeId) where.id = Not(excludeId);
-    const existed = await this.userRepo.findOne({ where });
+    const existed = await this.userRepo.findOne({ where, withDeleted: true });
     if (existed) {
       throw new CBadRequestException(ErrorCode.HAVE_EMAIL);
     }

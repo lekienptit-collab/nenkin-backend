@@ -1,7 +1,6 @@
 /**
  * Danh sách permission của hệ thống.
- * Base project chỉ giữ nhóm Thành viên + Quyền; thêm nhóm mới thì
- * khai báo ở đây rồi bổ sung vào PermissionGroup bên dưới.
+ * Thêm nhóm mới thì khai báo ở đây rồi bổ sung vào PermissionGroup bên dưới.
  */
 export enum RolePers {
   GET_USER = 'GET_USER',
@@ -15,6 +14,21 @@ export enum RolePers {
   UPDATE_ROLES = 'UPDATE_ROLES',
   DELETE_ROLES = 'DELETE_ROLES',
   UPDATE_ROLE_PERMISSIONS = 'UPDATE_ROLE_PERMISSIONS',
+
+  GET_WORKER = 'GET_WORKER',
+  CREATE_WORKER = 'CREATE_WORKER',
+  UPDATE_WORKER = 'UPDATE_WORKER',
+  DELETE_WORKER = 'DELETE_WORKER',
+  UPDATE_NENKIN_RESULT = 'UPDATE_NENKIN_RESULT',
+
+  GET_AGENT = 'GET_AGENT',
+  CREATE_AGENT = 'CREATE_AGENT',
+  UPDATE_AGENT = 'UPDATE_AGENT',
+  DELETE_AGENT = 'DELETE_AGENT',
+
+  GET_NENKIN_SERVICE = 'GET_NENKIN_SERVICE',
+  CREATE_NENKIN_SERVICE = 'CREATE_NENKIN_SERVICE',
+  DELETE_NENKIN_SERVICE = 'DELETE_NENKIN_SERVICE',
 }
 
 /** Quyền đặc biệt: có quyền này là có tất cả. */
@@ -35,6 +49,24 @@ export const PermissionGroup: Record<string, RolePers[]> = {
     RolePers.UPDATE_ROLES,
     RolePers.DELETE_ROLES,
     RolePers.UPDATE_ROLE_PERMISSIONS,
+  ],
+  WORKER: [
+    RolePers.GET_WORKER,
+    RolePers.CREATE_WORKER,
+    RolePers.UPDATE_WORKER,
+    RolePers.DELETE_WORKER,
+    RolePers.UPDATE_NENKIN_RESULT,
+  ],
+  AGENT: [
+    RolePers.GET_AGENT,
+    RolePers.CREATE_AGENT,
+    RolePers.UPDATE_AGENT,
+    RolePers.DELETE_AGENT,
+  ],
+  NENKIN_SERVICE: [
+    RolePers.GET_NENKIN_SERVICE,
+    RolePers.CREATE_NENKIN_SERVICE,
+    RolePers.DELETE_NENKIN_SERVICE,
   ],
 };
 

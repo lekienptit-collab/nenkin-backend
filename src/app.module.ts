@@ -3,10 +3,16 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import * as redisStore from 'cache-manager-redis-store';
 import { join } from 'path';
+import { AgentModule } from './agents/agents.module';
 import { AuthModule } from './auth/auth.module';
 import configuration from './common/config';
+import { MasterDataModule } from './master-data/master-data.module';
+import { NenkinModule } from './nenkin/nenkin.module';
+import { OcrModule } from './ocr/ocr.module';
 import { RoleModule } from './roles/roles.module';
+import { UploadModule } from './uploads/uploads.module';
 import { UserModule } from './users/users.module';
+import { WorkerModule } from './workers/workers.module';
 
 @Module({
   imports: [
@@ -42,6 +48,12 @@ import { UserModule } from './users/users.module';
     RoleModule,
     AuthModule,
     UserModule,
+    UploadModule,
+    MasterDataModule,
+    WorkerModule,
+    AgentModule,
+    NenkinModule,
+    OcrModule,
   ],
 })
 export class AppModule {}

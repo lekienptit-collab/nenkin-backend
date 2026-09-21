@@ -1,4 +1,8 @@
-import { PERMISSION_ALL, PermissionGroup, RolePers } from 'src/common/constatns/role';
+import {
+  PERMISSION_ALL,
+  PermissionGroup,
+  RolePers,
+} from 'src/common/constatns/role';
 import { RoleEntity } from 'src/entities/role.entity';
 
 /**
@@ -18,7 +22,13 @@ export const roleData: RoleEntity[] = [
     id: 2,
     name: 'Quản lý',
     slug: 'manager',
-    permissions: [...PermissionGroup.USER, ...PermissionGroup.ROLES],
+    permissions: [
+      ...PermissionGroup.USER,
+      ...PermissionGroup.ROLES,
+      ...PermissionGroup.WORKER,
+      ...PermissionGroup.AGENT,
+      ...PermissionGroup.NENKIN_SERVICE,
+    ],
     isCanEdit: false,
     isActive: true,
     roleId: 1,
@@ -27,7 +37,12 @@ export const roleData: RoleEntity[] = [
     id: 3,
     name: 'Thành viên',
     slug: 'member',
-    permissions: [RolePers.GET_USER],
+    permissions: [
+      RolePers.GET_USER,
+      ...PermissionGroup.WORKER,
+      ...PermissionGroup.AGENT,
+      ...PermissionGroup.NENKIN_SERVICE,
+    ],
     isCanEdit: false,
     isActive: true,
     roleId: 2,
