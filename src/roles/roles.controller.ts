@@ -142,7 +142,17 @@ export class RoleController {
         role.slug = payload.slug;
       }
       if (payload.roleId !== undefined && payload.roleId !== id) {
-        role.roleId = payload.roleId || null;
+        const parent = payload.roleId
+          ? await this.service.getRoleById(payload.roleId)
+          : null;
+        if (payload.roleId && !parent) {
+          throw new CBadRequestException(ErrorCode.ROLE_NOT_FOUND);
+        }
+        // Phai gan ca quan he `parent`, khong chi rieng `roleId`: ca hai cung
+        // tro vao cot `role_id`, va `save()` lay gia tri theo quan he da nap
+        // san nen neu chi doi `roleId` thi role cha cu bi ghi de lai.
+        role.roleId = parent?.id ?? null;
+        role.parent = parent;
       }
     }
 

@@ -169,8 +169,12 @@ export class UserService {
       user.email = payload.email;
     }
     if (payload.roleId && payload.roleId !== user.roleId) {
-      await this.assertRoleExists(payload.roleId);
-      user.roleId = payload.roleId;
+      const role = await this.assertRoleExists(payload.roleId);
+      // Phai gan ca quan he `role`, khong chi rieng `roleId`: ca hai cung tro
+      // vao cot `role_id`, va `save()` lay gia tri theo quan he da nap san nen
+      // neu chi doi `roleId` thi role cu bi ghi de lai, doi vai tro khong an.
+      user.roleId = role.id;
+      user.role = role;
     }
     if (payload.password) {
       user.password = bcrypt.hashSync(payload.password, BCRYPT_SALT_ROUNDS);
