@@ -41,8 +41,15 @@ export const finalDeclarationB: PaperTemplate = {
     },
     { kind: 'text', x: 100, y: 670, size: 12, value: (c) => c.worker.name },
 
-    // Người đại diện nộp thuế, ghi ngay dưới tên người khai.
-    { kind: 'text', x: 45, y: 645, size: 9, value: () => '納税管理人： ' },
+    // Người đại diện nộp thuế, ghi ngay dưới tên người khai. Người quay lại
+    // Nhật tự khai thuế nên không có người đại diện — bỏ luôn dòng nhãn.
+    {
+      kind: 'text',
+      x: 45,
+      y: 645,
+      size: 9,
+      value: (c) => (c.agent ? '納税管理人： ' : undefined),
+    },
     { kind: 'text', x: 99, y: 645, size: 9, value: (c) => c.agent?.name },
     {
       kind: 'text',

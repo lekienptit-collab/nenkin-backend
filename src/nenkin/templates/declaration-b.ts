@@ -1,15 +1,41 @@
 import { BankAccountType } from 'src/common/constatns/master-data';
-import { digitsOnly, jpAddress, PaperTemplate, toWareki } from './types';
+import {
+  digitsOnly,
+  FillContext,
+  jpAddress,
+  PaperTemplate,
+  toWareki,
+} from './types';
 
 /** Ô tiền bên phải bảng 税金の計算 — 7 ô, dồn phải. */
 const TAX_XS = [456, 471, 486, 501, 516, 531, 546];
 
-/** Tâm vòng tròn khoanh loại tài khoản 普通 / 当座 / 貯蓄 của người đại diện. */
+/** Tâm vòng tròn khoanh loại tài khoản 普通 / 当座 / 貯蓄. */
 const ACCOUNT_TYPE_CIRCLE_CX: Record<number, number> = {
   [BankAccountType.NORMAL]: 460.8,
   [BankAccountType.CHECKING]: 480.8,
   [BankAccountType.SAVING]: 523.8,
 };
+
+/**
+ * Tài khoản nhận tiền hoàn thuế: bình thường là của người đại diện nộp thuế.
+ * Người lao động quay lại Nhật thì tự khai thuế, không có người đại diện, nên
+ * tiền hoàn về thẳng tài khoản của chính họ.
+ */
+const refundBank = (c: FillContext) =>
+  c.agent
+    ? {
+        name: c.agent.bankName,
+        branch: c.agent.bankBranchName,
+        accountType: c.agent.bankAccountType,
+        accountNumber: c.agent.bankAccountNumber,
+      }
+    : {
+        name: c.worker.bankName,
+        branch: c.worker.bankBranchName,
+        accountType: c.worker.bankAccountType,
+        accountNumber: c.worker.bankAccountNumber,
+      };
 
 /** Ô ghi họ và ô ghi tên của dòng フリガナ nằm tách nhau. */
 const FURIGANA_SURNAME_XS = [320, 334, 348, 362, 376];
@@ -143,8 +169,15 @@ export const declarationB: PaperTemplate = {
     },
     { kind: 'text', x: 324, y: 724, size: 12, value: (c) => c.worker.name },
 
-    // Người đại diện nộp thuế.
-    { kind: 'text', x: 80, y: 706, size: 7, value: () => '納税管理人： ' },
+    // Người đại diện nộp thuế. Người quay lại Nhật tự khai thuế nên không có
+    // người đại diện — bỏ luôn cả dòng nhãn, tránh in nhãn rồi để trống.
+    {
+      kind: 'text',
+      x: 80,
+      y: 706,
+      size: 7,
+      value: (c) => (c.agent ? '納税管理人： ' : undefined),
+    },
     { kind: 'text', x: 125, y: 706, size: 7, value: (c) => c.agent?.name },
     {
       kind: 'text',
@@ -175,30 +208,45 @@ export const declarationB: PaperTemplate = {
       value: (c) => digitsOnly(c.worker.taxAmount),
     })),
 
-    // 還付される場所: tài khoản của người đại diện nhận tiền hoàn thuế.
-    { kind: 'circle', cx: 413, cy: 174, rx: 13.2, ry: 6.7 },
-    { kind: 'circle', cx: 543.1, cy: 173.5, rx: 13.2, ry: 6.2 },
-    { kind: 'text', x: 327, y: 167, size: 9, value: (c) => c.agent?.bankName },
+    // 還付される場所: nơi nhận tiền hoàn thuế. Chưa có tên ngân hàng thì để
+    // trống cả ô, không khoanh gì.
+    {
+      kind: 'circle',
+      cx: 413,
+      cy: 174,
+      rx: 13.2,
+      ry: 6.7,
+      when: (c) => !!refundBank(c).name,
+    },
+    {
+      kind: 'circle',
+      cx: 543.1,
+      cy: 173.5,
+      rx: 13.2,
+      ry: 6.2,
+      when: (c) => !!refundBank(c).name,
+    },
+    { kind: 'text', x: 327, y: 167, size: 9, value: (c) => refundBank(c).name },
     {
       kind: 'text',
       x: 450,
       y: 167,
       size: 9,
-      value: (c) => c.agent?.bankBranchName,
+      value: (c) => refundBank(c).branch,
     },
     {
       kind: 'circle',
       cy: 144.2,
       rx: 4.4,
       ry: 4.3,
-      cx: (c) => ACCOUNT_TYPE_CIRCLE_CX[c.agent?.bankAccountType as number],
+      cx: (c) => ACCOUNT_TYPE_CIRCLE_CX[refundBank(c).accountType as number],
     },
     {
       kind: 'chars',
       y: 127,
       size: 10,
       xs: [354, 369, 384, 399, 414, 429, 444],
-      value: (c) => digitsOnly(c.agent?.bankAccountNumber),
+      value: (c) => digitsOnly(refundBank(c).accountNumber),
     },
   ],
 };

@@ -1,17 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import { PDFDocument, PDFFont, PDFPage, rgb } from 'pdf-lib';
+import { extname, join } from 'path';
+import {
+  PageSizes,
+  PDFDocument,
+  PDFFont,
+  PDFImage,
+  PDFPage,
+  rgb,
+} from 'pdf-lib';
 import * as fontkitModule from '@pdf-lib/fontkit';
 import {
-  NENKIN_PAPER_TEMPLATES,
   NenkinServiceType,
+  papersFor,
+  SCANNED_PAPERS,
 } from 'src/common/constatns/master-data';
 import { AgentEntity } from 'src/entities/agent.entity';
 import { NenkinDocumentStatus } from 'src/entities/nenkin-document.entity';
 import { NenkinProcedureEntity } from 'src/entities/nenkin-procedure.entity';
 import { WorkerEntity } from 'src/entities/worker.entity';
+import { UploadService } from 'src/uploads/uploads.service';
 import { PAPER_TEMPLATES } from '../templates';
 import { Draw, FillContext, resolveCoord } from '../templates/types';
 
@@ -61,7 +70,10 @@ export class NenkinPdfService {
   /** Font 6MB, đọc một lần rồi dùng lại cho mọi lần sinh file. */
   private fontBytes?: Buffer;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   private get storageRoot(): string {
     return this.config.get<string>('storage.root');
@@ -88,7 +100,9 @@ export class NenkinPdfService {
     context: NenkinDocumentContext,
     serviceType: NenkinServiceType,
   ): Promise<GenerateResult> {
-    const papers = NENKIN_PAPER_TEMPLATES[serviceType] || [];
+    // Bộ giấy tờ đổi theo trường hợp: người quay lại Nhật không cần tờ chỉ định
+    // người đại diện nộp thuế.
+    const papers = papersFor(serviceType, context.procedure.caseType);
     const results: GeneratedDocument[] = [];
     const filled: Uint8Array[] = [];
 
@@ -112,6 +126,30 @@ export class NenkinPdfService {
         fileUrl: this.save(context, `${index + 1}.${paper.code}.pdf`, bytes),
         status: NenkinDocumentStatus.GENERATED,
         sortOrder: index,
+      });
+    }
+
+    // Giấy tờ bản scan: không có mẫu để điền, chỉ đưa ảnh người lao động đã
+    // tải lên vào một trang A4 rồi ghép vào cuối bộ hồ sơ.
+    for (const scanned of SCANNED_PAPERS[serviceType] || []) {
+      const bytes = await this.imageToPdf(context.worker[scanned.field]);
+      const sortOrder = results.length;
+      if (!bytes) {
+        results.push({
+          code: scanned.code,
+          name: scanned.name,
+          status: NenkinDocumentStatus.PENDING,
+          sortOrder,
+        });
+        continue;
+      }
+      filled.push(bytes);
+      results.push({
+        code: scanned.code,
+        name: scanned.name,
+        fileUrl: this.save(context, `${sortOrder + 1}.${scanned.code}.pdf`, bytes),
+        status: NenkinDocumentStatus.GENERATED,
+        sortOrder,
       });
     }
 
@@ -155,6 +193,51 @@ export class NenkinPdfService {
       pages.forEach((p) => merged.addPage(p));
     }
     return this.save(context, MERGED_NAME[serviceType], await merged.save());
+  }
+
+  /**
+   * Đưa một ảnh giấy tờ vào giữa trang A4 để in kèm bộ hồ sơ.
+   * Trả về null khi không đọc được file hoặc định dạng không nhúng được.
+   */
+  private async imageToPdf(imageUrl?: string): Promise<Uint8Array | null> {
+    const fullPath = imageUrl
+      ? this.uploadService.resolvePublicUrl(imageUrl)
+      : null;
+    if (!fullPath) {
+      return null;
+    }
+
+    const bytes = readFileSync(fullPath);
+    const doc = await PDFDocument.create();
+    const ext = extname(fullPath).toLowerCase();
+
+    let image: PDFImage;
+    try {
+      image =
+        ext === '.png'
+          ? await doc.embedPng(bytes)
+          : await doc.embedJpg(bytes);
+    } catch {
+      this.logger.warn(`Không nhúng được ảnh "${imageUrl}" vào PDF`);
+      return null;
+    }
+
+    const page = doc.addPage(PageSizes.A4);
+    const margin = 40;
+    const scale = Math.min(
+      (page.getWidth() - margin * 2) / image.width,
+      (page.getHeight() - margin * 2) / image.height,
+      1,
+    );
+    const width = image.width * scale;
+    const height = image.height * scale;
+    page.drawImage(image, {
+      x: (page.getWidth() - width) / 2,
+      y: (page.getHeight() - height) / 2,
+      width,
+      height,
+    });
+    return doc.save();
   }
 
   /** Điền dữ liệu lên mẫu PDF, trả về nội dung file kết quả. */

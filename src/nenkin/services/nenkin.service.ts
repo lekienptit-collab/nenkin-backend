@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ErrorCode } from 'src/common/constatns/error';
-import { NenkinServiceType } from 'src/common/constatns/master-data';
+import {
+  NenkinServiceType,
+  WorkerCaseType,
+} from 'src/common/constatns/master-data';
 import { CBadRequestException } from 'src/common/exceptions/bad-request.exception';
 import { AgentEntity } from 'src/entities/agent.entity';
 import { NenkinDocumentEntity } from 'src/entities/nenkin-document.entity';
@@ -63,10 +66,17 @@ export class NenkinService {
       throw new CBadRequestException(ErrorCode.WORKER_NOT_FOUND);
     }
 
-    const agent = await this.agentRepo.findOne({
-      where: { id: payload.agentId },
-    });
-    if (!agent) {
+    // Người quay lại Nhật tự khai thuế nên không gắn người đại diện.
+    const caseType = payload.caseType ?? WorkerCaseType.RETURN_HOME;
+    const needsAgent = caseType === WorkerCaseType.RETURN_HOME;
+
+    let agent: AgentEntity | undefined;
+    if (payload.agentId) {
+      agent = await this.agentRepo.findOne({ where: { id: payload.agentId } });
+      if (!agent) {
+        throw new CBadRequestException(ErrorCode.AGENT_NOT_FOUND);
+      }
+    } else if (needsAgent) {
       throw new CBadRequestException(ErrorCode.AGENT_NOT_FOUND);
     }
 
@@ -101,9 +111,10 @@ export class NenkinService {
 
     const values: Partial<NenkinProcedureEntity> = {
       workerId: payload.workerId,
-      agentId: payload.agentId,
+      agentId: needsAgent ? payload.agentId : null,
       serviceType: payload.serviceType,
-      relation: payload.relation,
+      caseType,
+      relation: needsAgent ? payload.relation : null,
       requestDate: isSecond ? null : payload.requestDate,
       entrustDate: isSecond ? null : payload.entrustDate,
       taxRequestDate: isSecond ? payload.taxRequestDate : null,

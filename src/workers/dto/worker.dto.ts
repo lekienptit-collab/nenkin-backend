@@ -17,10 +17,12 @@ import {
 } from 'class-validator';
 import { EmptyToNull } from 'src/common/validator/empty-to-null';
 import {
+  BankAccountType,
   Gender,
   NenkinResult,
   NenkinServiceType,
   PaperStatus,
+  PensionSchemeType,
 } from 'src/common/constatns/master-data';
 import { MAX_INSURANCE_HISTORY } from 'src/entities/worker-insurance-history.entity';
 
@@ -49,6 +51,12 @@ export class InsuranceHistoryDto {
   @IsOptional()
   @IsDateString()
   toDate?: string;
+
+  @ApiProperty({ required: false, enum: PensionSchemeType })
+  @IsOptional()
+  @Type(() => Number)
+  @IsEnum(PensionSchemeType)
+  pensionScheme?: PensionSchemeType;
 }
 
 export class CreateWorkerDto {
@@ -185,6 +193,14 @@ export class CreateWorkerDto {
   @IsString()
   nenkinBookImage?: string;
 
+  @ApiProperty({
+    required: false,
+    description: 'Ảnh giấy xác nhận cắt bảo hiểm Nenkin (資格喪失証明書)',
+  })
+  @IsOptional()
+  @IsString()
+  insuranceLossImage?: string;
+
   // ----- Ngân hàng -----
   @ApiProperty({ required: false, description: "'81' Nhật, '84' Việt Nam" })
   @IsOptional()
@@ -230,6 +246,12 @@ export class CreateWorkerDto {
   @IsOptional()
   @IsString()
   bankAccountNumber?: string;
+
+  @ApiProperty({ required: false, enum: BankAccountType })
+  @IsOptional()
+  @Type(() => Number)
+  @IsEnum(BankAccountType)
+  bankAccountType?: BankAccountType;
 
   @ApiProperty({ required: false })
   @IsOptional()

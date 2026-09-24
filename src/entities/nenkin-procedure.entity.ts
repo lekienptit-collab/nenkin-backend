@@ -11,7 +11,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { NenkinServiceType } from 'src/common/constatns/master-data';
+import {
+  NenkinServiceType,
+  WorkerCaseType,
+} from 'src/common/constatns/master-data';
 import { AgentEntity } from './agent.entity';
 import { NenkinDocumentEntity } from './nenkin-document.entity';
 import { UserEntity } from './user.entity';
@@ -50,6 +53,18 @@ export class NenkinProcedureEntity {
   @Column({ name: 'service_type', type: 'tinyint' })
   @ApiProperty({ enum: NenkinServiceType })
   serviceType: NenkinServiceType;
+
+  /**
+   * Người lao động về nước hẳn hay quay lại Nhật. Quyết định bộ giấy tờ sinh ra
+   * và việc có cần người đại diện nộp thuế hay không.
+   */
+  @Column({
+    name: 'case_type',
+    type: 'tinyint',
+    default: WorkerCaseType.RETURN_HOME,
+  })
+  @ApiProperty({ enum: WorkerCaseType })
+  caseType?: WorkerCaseType;
 
   /** Quan hệ với người được uỷ quyền (納税管理人, 友達 hoặc tự nhập). */
   @Column({ nullable: true })

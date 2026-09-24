@@ -10,12 +10,18 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Response } from 'express';
 import { ErrorCode } from 'src/common/constatns/error';
 import {
-  NENKIN_PAPER_TEMPLATES,
   NenkinServiceType,
+  allPapersFor,
+  WorkerCaseType,
 } from 'src/common/constatns/master-data';
 import { RolePers } from 'src/common/constatns/role';
 import {
@@ -41,13 +47,19 @@ export class NenkinController {
 
   @Get('/paper-templates')
   @UseGuards(TokenGuard)
-  @ApiOperation({ description: 'Danh sách giấy tờ của từng lần thủ tục' })
-  async paperTemplates() {
+  @ApiQuery({ name: 'caseType', required: false, enum: WorkerCaseType })
+  @ApiOperation({
+    description:
+      'Danh sách giấy tờ của từng lần thủ tục, lọc theo trường hợp của NLĐ',
+  })
+  async paperTemplates(@Query('caseType') caseType?: string) {
+    const parsed = caseType ? (Number(caseType) as WorkerCaseType) : undefined;
     return {
-      [NenkinServiceType.FIRST]:
-        NENKIN_PAPER_TEMPLATES[NenkinServiceType.FIRST],
-      [NenkinServiceType.SECOND]:
-        NENKIN_PAPER_TEMPLATES[NenkinServiceType.SECOND],
+      [NenkinServiceType.FIRST]: allPapersFor(NenkinServiceType.FIRST, parsed),
+      [NenkinServiceType.SECOND]: allPapersFor(
+        NenkinServiceType.SECOND,
+        parsed,
+      ),
     };
   }
 

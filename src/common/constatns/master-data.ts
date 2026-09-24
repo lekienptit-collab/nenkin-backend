@@ -45,6 +45,37 @@ export enum NenkinResult {
   RETURNED = 1,
 }
 
+/**
+ * Trường hợp của người lao động khi làm thủ tục.
+ * Người quay lại Nhật tự khai thuế nên không cần người đại diện nộp thuế.
+ */
+export enum WorkerCaseType {
+  /** Về nước hẳn — cần người đại diện nộp thuế ở Nhật. */
+  RETURN_HOME = 1,
+  /** Quay lại Nhật — tự khai thuế, không cần người đại diện. */
+  RETURN_JAPAN = 2,
+}
+
+export const WORKER_CASE_TYPES: OptionItem[] = [
+  { value: '1', label: 'Về nước hẳn' },
+  { value: '2', label: 'Quay lại Nhật' },
+];
+
+/** Chế độ lương hưu mà người lao động từng tham gia (mục 7 của 請求書). */
+export enum PensionSchemeType {
+  NATIONAL = 1,
+  EMPLOYEES = 2,
+  SEAMEN = 3,
+  MUTUAL_AID = 4,
+}
+
+export const PENSION_SCHEMES: OptionItem[] = [
+  { value: '1', label: '国民年金 — Bảo hiểm quốc dân' },
+  { value: '2', label: '厚生年金保険 — Bảo hiểm lao động xã hội' },
+  { value: '3', label: '船員保険 — Bảo hiểm hàng hải' },
+  { value: '4', label: '共済組合 — Hiệp hội hỗ tương' },
+];
+
 /** Loại tài khoản ngân hàng của người đại diện. */
 export enum BankAccountType {
   NORMAL = 1,
@@ -448,3 +479,55 @@ export const NENKIN_PAPER_TEMPLATES: Record<
     { code: 'FinalDeclarationB', name: '確定申告書B（第二表）' },
   ],
 };
+
+/**
+ * Giấy tờ được ghép từ ảnh người lao động tải lên, không phải mẫu PDF điền sẵn.
+ * `field` là tên trường chứa URL ảnh trên hồ sơ người lao động.
+ */
+export const SCANNED_PAPERS: Record<
+  NenkinServiceType,
+  { code: string; name: string; field: string }[]
+> = {
+  [NenkinServiceType.FIRST]: [
+    {
+      code: 'InsuranceLossCertificate',
+      name: 'Giấy xác nhận cắt bảo hiểm Nenkin (資格喪失証明書)',
+      field: 'insuranceLossImage',
+    },
+  ],
+  [NenkinServiceType.SECOND]: [],
+};
+
+/**
+ * Giấy tờ chỉ dùng khi người lao động về nước hẳn.
+ * Người quay lại Nhật tự khai thuế nên không cần chỉ định người đại diện nộp thuế.
+ */
+export const RETURN_HOME_ONLY_PAPERS = ['TaxManagerNotice'];
+
+/** Bộ giấy tờ của một lần thủ tục, đã lọc theo trường hợp của người lao động. */
+export const papersFor = (
+  serviceType: NenkinServiceType,
+  caseType: WorkerCaseType = WorkerCaseType.RETURN_HOME,
+) =>
+  (NENKIN_PAPER_TEMPLATES[serviceType] || []).filter(
+    (p) =>
+      caseType === WorkerCaseType.RETURN_HOME ||
+      !RETURN_HOME_ONLY_PAPERS.includes(p.code),
+  );
+
+/**
+ * Toàn bộ giấy tờ có trong bộ hồ sơ, gồm cả giấy tờ chỉ đính kèm bản scan.
+ * Dùng để hiển thị cho người dùng biết bộ hồ sơ gồm những gì; còn `papersFor`
+ * chỉ trả về các mẫu hệ thống tự điền nên đừng dùng nhầm khi sinh PDF.
+ */
+export const allPapersFor = (
+  serviceType: NenkinServiceType,
+  caseType: WorkerCaseType = WorkerCaseType.RETURN_HOME,
+): { code: string; name: string; scanned: boolean }[] => [
+  ...papersFor(serviceType, caseType).map((p) => ({ ...p, scanned: false })),
+  ...(SCANNED_PAPERS[serviceType] || []).map((p) => ({
+    code: p.code,
+    name: p.name,
+    scanned: true,
+  })),
+];

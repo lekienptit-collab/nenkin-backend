@@ -10,7 +10,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Gender, NenkinResult } from 'src/common/constatns/master-data';
+import {
+  BankAccountType,
+  Gender,
+  NenkinResult,
+} from 'src/common/constatns/master-data';
 import { UserEntity } from './user.entity';
 import { WorkerInsuranceHistoryEntity } from './worker-insurance-history.entity';
 
@@ -132,6 +136,11 @@ export class WorkerEntity {
   @ApiProperty()
   nenkinBookImage?: string;
 
+  /** Ảnh giấy xác nhận cắt bảo hiểm Nenkin (資格喪失証明書) do công ty cấp. */
+  @Column({ name: 'insurance_loss_image', nullable: true })
+  @ApiProperty()
+  insuranceLossImage?: string;
+
   // ----- Tài khoản ngân hàng -----
   @Column({ name: 'bank_country', nullable: true })
   @ApiProperty()
@@ -168,6 +177,14 @@ export class WorkerEntity {
   @Column({ name: 'bank_account_number', nullable: true })
   @ApiProperty()
   bankAccountNumber?: string;
+
+  /**
+   * Loại tài khoản (普通/当座/貯蓄). Chỉ cần khi người lao động quay lại Nhật và
+   * tự nhận tiền hoàn thuế, vì lúc đó không có người đại diện đứng tên.
+   */
+  @Column({ name: 'bank_account_type', type: 'tinyint', nullable: true })
+  @ApiProperty({ enum: BankAccountType })
+  bankAccountType?: BankAccountType;
 
   @Column({ name: 'bank_image', nullable: true })
   @ApiProperty()

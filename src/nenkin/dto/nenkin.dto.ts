@@ -9,7 +9,10 @@ import {
   IsString,
   ValidateIf,
 } from 'class-validator';
-import { NenkinServiceType } from 'src/common/constatns/master-data';
+import {
+  NenkinServiceType,
+  WorkerCaseType,
+} from 'src/common/constatns/master-data';
 
 export class CreateNenkinProcedureDto {
   @ApiProperty({ enum: NenkinServiceType, description: '1 = lần 1, 2 = lần 2' })
@@ -22,15 +25,35 @@ export class CreateNenkinProcedureDto {
   @IsInt()
   workerId: number;
 
-  @ApiProperty()
+  @ApiProperty({
+    required: false,
+    description:
+      'Bắt buộc khi về nước hẳn; người quay lại Nhật tự khai nên bỏ trống',
+  })
+  @ValidateIf((o) => o.caseType !== WorkerCaseType.RETURN_JAPAN)
   @Type(() => Number)
   @IsInt()
-  agentId: number;
+  agentId?: number;
 
-  @ApiProperty({ description: 'Quan hệ với người được uỷ quyền' })
+  @ApiProperty({
+    required: false,
+    enum: WorkerCaseType,
+    default: WorkerCaseType.RETURN_HOME,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsEnum(WorkerCaseType)
+  caseType?: WorkerCaseType;
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Quan hệ với người được uỷ quyền; bỏ trống khi người lao động quay lại Nhật',
+  })
+  @ValidateIf((o) => o.caseType !== WorkerCaseType.RETURN_JAPAN)
   @IsString()
   @IsNotEmpty()
-  relation: string;
+  relation?: string;
 
   // ----- Chỉ dùng cho lần 1 -----
   @ApiProperty({ required: false, description: 'Ngày làm đơn (lần 1)' })

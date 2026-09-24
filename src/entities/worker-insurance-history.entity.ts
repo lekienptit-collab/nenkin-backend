@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PensionSchemeType } from 'src/common/constatns/master-data';
 import {
   Column,
   Entity,
@@ -44,6 +45,15 @@ export class WorkerInsuranceHistoryEntity {
   @Column({ name: 'to_date', type: 'date', nullable: true })
   @ApiProperty()
   toDate?: string;
+
+  /** Chế độ lương hưu đã tham gia, in ở cột (4) mục 7 của 脱退一時金請求書. */
+  @Column({
+    name: 'pension_scheme',
+    type: 'tinyint',
+    default: PensionSchemeType.EMPLOYEES,
+  })
+  @ApiProperty({ enum: PensionSchemeType })
+  pensionScheme?: PensionSchemeType;
 
   @Column({ name: 'sort_order', default: 0 })
   @ApiProperty()
