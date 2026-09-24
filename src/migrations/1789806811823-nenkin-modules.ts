@@ -1,39 +1,82 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class NenkinModules1789806811823 implements MigrationInterface {
-    name = 'NenkinModules1789806811823'
+  name = 'NenkinModules1789806811823';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TABLE \`worker_insurance_histories\` (\`id\` int NOT NULL AUTO_INCREMENT, \`worker_id\` int NOT NULL, \`work_place\` text NULL, \`address\` text NULL, \`from_date\` date NULL, \`to_date\` date NULL, \`sort_order\` int NOT NULL DEFAULT '0', PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
-        await queryRunner.query(`CREATE TABLE \`workers\` (\`id\` int NOT NULL AUTO_INCREMENT, \`name\` varchar(255) NOT NULL, \`name_furigana\` varchar(255) NULL, \`gender\` tinyint NULL, \`date_of_birth\` date NULL, \`phone_number\` varchar(255) NULL, \`country\` varchar(255) NOT NULL DEFAULT 'Việt Nam', \`leave_japan_date\` date NULL, \`occupation\` varchar(255) NULL, \`passport_first_page\` varchar(255) NULL, \`passport_second_page\` varchar(255) NULL, \`passport_stamp_page\` varchar(255) NULL, \`left_proof_url\` varchar(255) NULL, \`address_vn_prefecture_code\` varchar(255) NULL, \`address_vn_district\` varchar(255) NULL, \`address_vn_postal_code\` varchar(255) NULL, \`address_vn_address\` varchar(100) NULL, \`address_jp_postal_code\` varchar(255) NULL, \`address_jp_prefecture_code\` varchar(255) NULL, \`address_jp_district\` varchar(255) NULL, \`address_jp_house_number\` varchar(255) NULL, \`residence_card_front_image\` varchar(255) NULL, \`residence_card_back_image\` varchar(255) NULL, \`pension_number\` varchar(255) NULL, \`nenkin_book_image\` varchar(255) NULL, \`bank_country\` varchar(255) NULL, \`bank_name\` varchar(255) NULL, \`bank_branch_name\` varchar(255) NULL, \`bank_swift_code\` varchar(255) NULL, \`bank_branch_address\` varchar(255) NULL, \`bank_city\` varchar(255) NULL, \`bank_account_name\` varchar(255) NULL, \`bank_account_name_furigana\` varchar(255) NULL, \`bank_account_number\` varchar(255) NULL, \`bank_image\` varchar(255) NULL, \`bank_image_back\` varchar(255) NULL, \`tax_deduct\` decimal(15,0) NULL, \`tax_amount\` decimal(15,0) NULL, \`net_pension\` decimal(15,0) NULL, \`result_date_1\` date NULL, \`result_date_2\` date NULL, \`nenkin_first_result\` tinyint NOT NULL DEFAULT '0', \`nenkin_second_result\` tinyint NOT NULL DEFAULT '0', \`created_by\` varchar(255) NULL, \`updated_by\` varchar(255) NULL, \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`deleted_at\` datetime(6) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
-        await queryRunner.query(`CREATE TABLE \`agents\` (\`id\` int NOT NULL AUTO_INCREMENT, \`name\` varchar(255) NOT NULL, \`name_furigana\` varchar(255) NULL, \`phone_number\` varchar(255) NULL, \`occupation\` varchar(255) NULL, \`bank_name\` varchar(255) NULL, \`bank_branch_name\` varchar(255) NULL, \`bank_account_name\` varchar(255) NULL, \`bank_account_number\` varchar(255) NULL, \`bank_account_type\` tinyint NULL, \`address_postal_code\` varchar(255) NULL, \`address_detail\` varchar(255) NULL, \`created_by\` varchar(255) NULL, \`updated_by\` varchar(255) NULL, \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`deleted_at\` datetime(6) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
-        await queryRunner.query(`CREATE TABLE \`nenkin_documents\` (\`id\` int NOT NULL AUTO_INCREMENT, \`procedure_id\` int NOT NULL, \`code\` varchar(255) NOT NULL, \`name\` varchar(255) NOT NULL, \`file_url\` varchar(255) NULL, \`status\` varchar(255) NOT NULL DEFAULT 'PENDING', \`sort_order\` int NOT NULL DEFAULT '0', \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
-        await queryRunner.query(`CREATE TABLE \`nenkin_procedures\` (\`id\` int NOT NULL AUTO_INCREMENT, \`worker_id\` int NOT NULL, \`agent_id\` int NULL, \`service_type\` tinyint NOT NULL, \`relation\` varchar(255) NULL, \`request_date\` date NULL, \`entrust_date\` date NULL, \`tax_request_date\` date NULL, \`tax_entrust_date\` date NULL, \`tax_office\` varchar(255) NULL, \`created_by\` varchar(255) NULL, \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`deleted_at\` datetime(6) NULL, UNIQUE INDEX \`IDX_nenkin_procedure_worker_type\` (\`worker_id\`, \`service_type\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
-        await queryRunner.query(`ALTER TABLE \`worker_insurance_histories\` ADD CONSTRAINT \`FK_5d9a84d202cedaf3a16824d5ead\` FOREIGN KEY (\`worker_id\`) REFERENCES \`workers\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`workers\` ADD CONSTRAINT \`FK_9835ad4544534e4eea04521ae5d\` FOREIGN KEY (\`created_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`workers\` ADD CONSTRAINT \`FK_3b57d387513e29f1d35b5f0e5f0\` FOREIGN KEY (\`updated_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`agents\` ADD CONSTRAINT \`FK_5e686999313ac6bfb5fca45b368\` FOREIGN KEY (\`created_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`nenkin_documents\` ADD CONSTRAINT \`FK_38137b3dd1545c8d2bbfb9eef1e\` FOREIGN KEY (\`procedure_id\`) REFERENCES \`nenkin_procedures\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`nenkin_procedures\` ADD CONSTRAINT \`FK_d9e423a28dc36b7524f5d0781ff\` FOREIGN KEY (\`worker_id\`) REFERENCES \`workers\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`nenkin_procedures\` ADD CONSTRAINT \`FK_fdfc13edf3d4bf4f2e3457a0d5d\` FOREIGN KEY (\`agent_id\`) REFERENCES \`agents\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE \`nenkin_procedures\` ADD CONSTRAINT \`FK_76d32c1d1da09348144b795eddd\` FOREIGN KEY (\`created_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
-    }
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `CREATE TABLE \`worker_insurance_histories\` (\`id\` int NOT NULL AUTO_INCREMENT, \`worker_id\` int NOT NULL, \`work_place\` text NULL, \`address\` text NULL, \`from_date\` date NULL, \`to_date\` date NULL, \`sort_order\` int NOT NULL DEFAULT '0', PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE \`workers\` (\`id\` int NOT NULL AUTO_INCREMENT, \`name\` varchar(255) NOT NULL, \`name_furigana\` varchar(255) NULL, \`gender\` tinyint NULL, \`date_of_birth\` date NULL, \`phone_number\` varchar(255) NULL, \`country\` varchar(255) NOT NULL DEFAULT 'Việt Nam', \`leave_japan_date\` date NULL, \`occupation\` varchar(255) NULL, \`passport_first_page\` varchar(255) NULL, \`passport_second_page\` varchar(255) NULL, \`passport_stamp_page\` varchar(255) NULL, \`left_proof_url\` varchar(255) NULL, \`address_vn_prefecture_code\` varchar(255) NULL, \`address_vn_district\` varchar(255) NULL, \`address_vn_postal_code\` varchar(255) NULL, \`address_vn_address\` varchar(100) NULL, \`address_jp_postal_code\` varchar(255) NULL, \`address_jp_prefecture_code\` varchar(255) NULL, \`address_jp_district\` varchar(255) NULL, \`address_jp_house_number\` varchar(255) NULL, \`residence_card_front_image\` varchar(255) NULL, \`residence_card_back_image\` varchar(255) NULL, \`pension_number\` varchar(255) NULL, \`nenkin_book_image\` varchar(255) NULL, \`bank_country\` varchar(255) NULL, \`bank_name\` varchar(255) NULL, \`bank_branch_name\` varchar(255) NULL, \`bank_swift_code\` varchar(255) NULL, \`bank_branch_address\` varchar(255) NULL, \`bank_city\` varchar(255) NULL, \`bank_account_name\` varchar(255) NULL, \`bank_account_name_furigana\` varchar(255) NULL, \`bank_account_number\` varchar(255) NULL, \`bank_image\` varchar(255) NULL, \`bank_image_back\` varchar(255) NULL, \`tax_deduct\` decimal(15,0) NULL, \`tax_amount\` decimal(15,0) NULL, \`net_pension\` decimal(15,0) NULL, \`result_date_1\` date NULL, \`result_date_2\` date NULL, \`nenkin_first_result\` tinyint NOT NULL DEFAULT '0', \`nenkin_second_result\` tinyint NOT NULL DEFAULT '0', \`created_by\` varchar(255) NULL, \`updated_by\` varchar(255) NULL, \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`deleted_at\` datetime(6) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE \`agents\` (\`id\` int NOT NULL AUTO_INCREMENT, \`name\` varchar(255) NOT NULL, \`name_furigana\` varchar(255) NULL, \`phone_number\` varchar(255) NULL, \`occupation\` varchar(255) NULL, \`bank_name\` varchar(255) NULL, \`bank_branch_name\` varchar(255) NULL, \`bank_account_name\` varchar(255) NULL, \`bank_account_number\` varchar(255) NULL, \`bank_account_type\` tinyint NULL, \`address_postal_code\` varchar(255) NULL, \`address_detail\` varchar(255) NULL, \`created_by\` varchar(255) NULL, \`updated_by\` varchar(255) NULL, \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`deleted_at\` datetime(6) NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE \`nenkin_documents\` (\`id\` int NOT NULL AUTO_INCREMENT, \`procedure_id\` int NOT NULL, \`code\` varchar(255) NOT NULL, \`name\` varchar(255) NOT NULL, \`file_url\` varchar(255) NULL, \`status\` varchar(255) NOT NULL DEFAULT 'PENDING', \`sort_order\` int NOT NULL DEFAULT '0', \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE \`nenkin_procedures\` (\`id\` int NOT NULL AUTO_INCREMENT, \`worker_id\` int NOT NULL, \`agent_id\` int NULL, \`service_type\` tinyint NOT NULL, \`relation\` varchar(255) NULL, \`request_date\` date NULL, \`entrust_date\` date NULL, \`tax_request_date\` date NULL, \`tax_entrust_date\` date NULL, \`tax_office\` varchar(255) NULL, \`created_by\` varchar(255) NULL, \`create_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), \`updated_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6), \`deleted_at\` datetime(6) NULL, UNIQUE INDEX \`IDX_nenkin_procedure_worker_type\` (\`worker_id\`, \`service_type\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`worker_insurance_histories\` ADD CONSTRAINT \`FK_5d9a84d202cedaf3a16824d5ead\` FOREIGN KEY (\`worker_id\`) REFERENCES \`workers\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`workers\` ADD CONSTRAINT \`FK_9835ad4544534e4eea04521ae5d\` FOREIGN KEY (\`created_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`workers\` ADD CONSTRAINT \`FK_3b57d387513e29f1d35b5f0e5f0\` FOREIGN KEY (\`updated_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`agents\` ADD CONSTRAINT \`FK_5e686999313ac6bfb5fca45b368\` FOREIGN KEY (\`created_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_documents\` ADD CONSTRAINT \`FK_38137b3dd1545c8d2bbfb9eef1e\` FOREIGN KEY (\`procedure_id\`) REFERENCES \`nenkin_procedures\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_procedures\` ADD CONSTRAINT \`FK_d9e423a28dc36b7524f5d0781ff\` FOREIGN KEY (\`worker_id\`) REFERENCES \`workers\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_procedures\` ADD CONSTRAINT \`FK_fdfc13edf3d4bf4f2e3457a0d5d\` FOREIGN KEY (\`agent_id\`) REFERENCES \`agents\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_procedures\` ADD CONSTRAINT \`FK_76d32c1d1da09348144b795eddd\` FOREIGN KEY (\`created_by\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE \`nenkin_procedures\` DROP FOREIGN KEY \`FK_76d32c1d1da09348144b795eddd\``);
-        await queryRunner.query(`ALTER TABLE \`nenkin_procedures\` DROP FOREIGN KEY \`FK_fdfc13edf3d4bf4f2e3457a0d5d\``);
-        await queryRunner.query(`ALTER TABLE \`nenkin_procedures\` DROP FOREIGN KEY \`FK_d9e423a28dc36b7524f5d0781ff\``);
-        await queryRunner.query(`ALTER TABLE \`nenkin_documents\` DROP FOREIGN KEY \`FK_38137b3dd1545c8d2bbfb9eef1e\``);
-        await queryRunner.query(`ALTER TABLE \`agents\` DROP FOREIGN KEY \`FK_5e686999313ac6bfb5fca45b368\``);
-        await queryRunner.query(`ALTER TABLE \`workers\` DROP FOREIGN KEY \`FK_3b57d387513e29f1d35b5f0e5f0\``);
-        await queryRunner.query(`ALTER TABLE \`workers\` DROP FOREIGN KEY \`FK_9835ad4544534e4eea04521ae5d\``);
-        await queryRunner.query(`ALTER TABLE \`worker_insurance_histories\` DROP FOREIGN KEY \`FK_5d9a84d202cedaf3a16824d5ead\``);
-        await queryRunner.query(`DROP INDEX \`IDX_nenkin_procedure_worker_type\` ON \`nenkin_procedures\``);
-        await queryRunner.query(`DROP TABLE \`nenkin_procedures\``);
-        await queryRunner.query(`DROP TABLE \`nenkin_documents\``);
-        await queryRunner.query(`DROP TABLE \`agents\``);
-        await queryRunner.query(`DROP TABLE \`workers\``);
-        await queryRunner.query(`DROP TABLE \`worker_insurance_histories\``);
-    }
-
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_procedures\` DROP FOREIGN KEY \`FK_76d32c1d1da09348144b795eddd\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_procedures\` DROP FOREIGN KEY \`FK_fdfc13edf3d4bf4f2e3457a0d5d\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_procedures\` DROP FOREIGN KEY \`FK_d9e423a28dc36b7524f5d0781ff\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`nenkin_documents\` DROP FOREIGN KEY \`FK_38137b3dd1545c8d2bbfb9eef1e\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`agents\` DROP FOREIGN KEY \`FK_5e686999313ac6bfb5fca45b368\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`workers\` DROP FOREIGN KEY \`FK_3b57d387513e29f1d35b5f0e5f0\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`workers\` DROP FOREIGN KEY \`FK_9835ad4544534e4eea04521ae5d\``,
+    );
+    await queryRunner.query(
+      `ALTER TABLE \`worker_insurance_histories\` DROP FOREIGN KEY \`FK_5d9a84d202cedaf3a16824d5ead\``,
+    );
+    await queryRunner.query(
+      `DROP INDEX \`IDX_nenkin_procedure_worker_type\` ON \`nenkin_procedures\``,
+    );
+    await queryRunner.query(`DROP TABLE \`nenkin_procedures\``);
+    await queryRunner.query(`DROP TABLE \`nenkin_documents\``);
+    await queryRunner.query(`DROP TABLE \`agents\``);
+    await queryRunner.query(`DROP TABLE \`workers\``);
+    await queryRunner.query(`DROP TABLE \`worker_insurance_histories\``);
+  }
 }

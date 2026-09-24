@@ -23,7 +23,8 @@ export function Unique<E>(
       target: object.constructor,
       propertyName,
       options: {
-        message: (args: ValidationArguments) => `${args.property} already exists`,
+        message: (args: ValidationArguments) =>
+          `${args.property} already exists`,
         ...validationOptions,
       },
       constraints: [entity, findCondition, idField],

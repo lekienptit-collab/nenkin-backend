@@ -53,7 +53,9 @@ export class UserController {
       phone,
       roleId: roleId ? parseInt(roleId, 10) : undefined,
       isActive:
-        isActive === undefined || isActive === '' ? undefined : isActive === 'true',
+        isActive === undefined || isActive === ''
+          ? undefined
+          : isActive === 'true',
     });
   }
 

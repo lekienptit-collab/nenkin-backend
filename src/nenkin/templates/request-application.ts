@@ -1,8 +1,13 @@
-import { BankCountry } from 'src/common/constatns/master-data';
+import {
+  BankCountry,
+  PensionSchemeType,
+} from 'src/common/constatns/master-data';
 import {
   dateParts,
   deaccent,
   digitsOnly,
+  Draw,
+  FillContext,
   padSwift,
   PaperTemplate,
   vnProvinceName,
@@ -14,10 +19,94 @@ const isJapanBank = (country?: string) => country === BankCountry.JAPAN;
 const latin = (v?: string) => deaccent(v)?.toUpperCase();
 
 /**
- * 脱退一時金請求書 — đơn xin nhận trợ cấp lương hưu trọn gói. 2 trang.
+ * Trang 3 — mục 7 「履歴（公的年金制度加入経過）」: bảng 4 dòng khai quá trình
+ * tham gia bảo hiểm, mỗi dòng ứng với một dòng lịch sử BHXH của người lao động.
  *
- * Mẫu gốc có 3 trang; trang 3 (mục 7 — lịch sử tham gia chế độ lương hưu)
- * không được điền, giống hệ thống cũ, nên phôi chỉ giữ 2 trang đầu.
+ * Toạ độ đo từ đường kẻ của bảng: mép trên 4 dòng nằm ở các y dưới đây, mỗi
+ * dòng cao ~59,8pt.
+ */
+const HISTORY_ROW_TOPS = [669.8, 609.9, 550.4, 490.4];
+
+/** Khoảng cách từ mép trên dòng tới tâm vòng khoanh của 4 chế độ lương hưu. */
+const SCHEME_CIRCLE_DY: Record<number, number> = {
+  [PensionSchemeType.NATIONAL]: -6.4,
+  [PensionSchemeType.EMPLOYEES]: -18.1,
+  [PensionSchemeType.SEAMEN]: -30.2,
+  [PensionSchemeType.MUTUAL_AID]: -41.9,
+};
+
+/** Lịch sử BHXH theo đúng thứ tự người dùng đã nhập. */
+const history = (c: FillContext, index: number) =>
+  [...(c.worker.insuranceHistories || [])].sort(
+    (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0),
+  )[index];
+
+/** 2022-04-01 -> "2022/04/01"; cột ngày trên mẫu ghi theo dương lịch. */
+const slashDate = (iso?: string) => {
+  const p = dateParts(iso);
+  return p ? `${p.y}/${p.m}/${p.d}` : undefined;
+};
+
+/** Bốn lệnh in cho một dòng của bảng lịch sử. */
+const historyRow = (index: number): Draw[] => {
+  const top = HISTORY_ROW_TOPS[index];
+  const textYs = [top - 11, top - 20, top - 29, top - 38];
+
+  return [
+    // (1) 事業所の名称 — tên cơ sở kinh doanh.
+    {
+      kind: 'lines',
+      page: 2,
+      x: 50,
+      size: 7,
+      ys: textYs,
+      perLine: 13,
+      value: (c) => history(c, index)?.workPlace,
+    },
+    // (2) 事業所の所在地 — địa chỉ cơ sở kinh doanh.
+    {
+      kind: 'lines',
+      page: 2,
+      x: 151,
+      size: 7,
+      ys: textYs,
+      perLine: 16,
+      value: (c) => history(c, index)?.address,
+    },
+    // (3) 勤務期間 — từ ngày ... đến ngày.
+    {
+      kind: 'text',
+      page: 2,
+      x: 292,
+      y: top - 21.5,
+      size: 8,
+      value: (c) => slashDate(history(c, index)?.fromDate),
+    },
+    {
+      kind: 'text',
+      page: 2,
+      x: 292,
+      y: top - 45,
+      size: 8,
+      value: (c) => slashDate(history(c, index)?.toDate),
+    },
+    // (4) 年金制度の種類 — khoanh số của chế độ đã tham gia.
+    {
+      kind: 'circle',
+      page: 2,
+      cx: 396,
+      rx: 5,
+      ry: 6,
+      cy: (c) => {
+        const dy = SCHEME_CIRCLE_DY[history(c, index)?.pensionScheme as number];
+        return dy === undefined ? undefined : top + dy;
+      },
+    },
+  ];
+};
+
+/**
+ * 脱退一時金請求書 — đơn xin nhận trợ cấp lương hưu trọn gói. 3 trang.
  */
 export const requestApplication: PaperTemplate = {
   code: 'RequestApplication',
@@ -210,5 +299,8 @@ export const requestApplication: PaperTemplate = {
       xs: [267, 294, 321, 348, 404, 431, 458, 485, 512, 539],
       value: (c) => digitsOnly(c.worker.pensionNumber),
     },
+
+    // --- Trang 3: 7. 履歴（公的年金制度加入経過） ---
+    ...HISTORY_ROW_TOPS.flatMap((_, index) => historyRow(index)),
   ],
 };

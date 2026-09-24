@@ -147,7 +147,11 @@ export class NenkinPdfService {
       results.push({
         code: scanned.code,
         name: scanned.name,
-        fileUrl: this.save(context, `${sortOrder + 1}.${scanned.code}.pdf`, bytes),
+        fileUrl: this.save(
+          context,
+          `${sortOrder + 1}.${scanned.code}.pdf`,
+          bytes,
+        ),
         status: NenkinDocumentStatus.GENERATED,
         sortOrder,
       });
@@ -214,9 +218,7 @@ export class NenkinPdfService {
     let image: PDFImage;
     try {
       image =
-        ext === '.png'
-          ? await doc.embedPng(bytes)
-          : await doc.embedJpg(bytes);
+        ext === '.png' ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
     } catch {
       this.logger.warn(`Không nhúng được ảnh "${imageUrl}" vào PDF`);
       return null;

@@ -31,7 +31,11 @@ export class AuthService implements OnModuleInit {
     await this.createAdminUser();
   }
 
-  async login(payload: LoginDto, agent?: string, ip?: string): Promise<LoginRes> {
+  async login(
+    payload: LoginDto,
+    agent?: string,
+    ip?: string,
+  ): Promise<LoginRes> {
     // password co select:false nen phai addSelect thu cong.
     const user = await this.userRepo
       .createQueryBuilder('u')
