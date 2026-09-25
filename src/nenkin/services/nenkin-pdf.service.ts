@@ -14,7 +14,7 @@ import * as fontkitModule from '@pdf-lib/fontkit';
 import {
   NenkinServiceType,
   papersFor,
-  SCANNED_PAPERS,
+  scannedPapersFor,
 } from 'src/common/constatns/master-data';
 import { AgentEntity } from 'src/entities/agent.entity';
 import { NenkinDocumentStatus } from 'src/entities/nenkin-document.entity';
@@ -131,7 +131,10 @@ export class NenkinPdfService {
 
     // Giấy tờ đính kèm: không có mẫu để điền, chỉ đưa ảnh người lao động đã
     // tải lên vào các trang A4 rồi ghép vào cuối bộ hồ sơ.
-    for (const scanned of SCANNED_PAPERS[serviceType] || []) {
+    for (const scanned of scannedPapersFor(
+      serviceType,
+      context.procedure.caseType,
+    )) {
       const bytes = await this.imagesToPdf(
         scanned.fields.map((f) => context.worker[f] as string | undefined),
       );

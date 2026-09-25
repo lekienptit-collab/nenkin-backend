@@ -485,11 +485,19 @@ export const NENKIN_PAPER_TEMPLATES: Record<
  * PDF điền sẵn. `fields` là các trường chứa URL ảnh trên hồ sơ người lao động;
  * mỗi ảnh có sẵn thành một trang trong giấy tờ đó.
  *
- * Danh sách và tên gọi giữ đúng như hệ thống cũ hiển thị ở thủ tục lần 1.
+ * `caseTypes` để trống nghĩa là trường hợp nào cũng cần; có giá trị thì chỉ
+ * kèm cho đúng những trường hợp đó.
+ *
+ * Danh sách và tên gọi giữ đúng như hệ thống cũ hiển thị.
  */
 export const SCANNED_PAPERS: Record<
   NenkinServiceType,
-  { code: string; name: string; fields: string[] }[]
+  {
+    code: string;
+    name: string;
+    fields: string[];
+    caseTypes?: WorkerCaseType[];
+  }[]
 > = {
   [NenkinServiceType.FIRST]: [
     {
@@ -513,8 +521,37 @@ export const SCANNED_PAPERS: Record<
       fields: ['bankImage', 'bankImageBack'],
     },
   ],
-  [NenkinServiceType.SECOND]: [],
+  [NenkinServiceType.SECOND]: [
+    {
+      code: 'PassportCopy',
+      name: 'Hộ chiếu',
+      fields: ['passportFirstPage', 'passportSecondPage', 'passportStampPage'],
+    },
+    {
+      code: 'ResidenceCardCopy',
+      name: 'Thẻ ngoại kiều',
+      fields: ['residenceCardFrontImage', 'residenceCardBackImage'],
+    },
+    {
+      // Người quay lại Nhật tự nhận tiền hoàn thuế vào tài khoản của mình nên
+      // phải nộp kèm giấy xác nhận tài khoản; người về hẳn thì nhận qua người
+      // đại diện nên không cần.
+      code: 'BankCertificateCopy',
+      name: 'Giấy xác nhận tài khoản ngân hàng',
+      fields: ['bankImage', 'bankImageBack'],
+      caseTypes: [WorkerCaseType.RETURN_JAPAN],
+    },
+  ],
 };
+
+/** Giấy tờ đính kèm của một lần thủ tục, đã lọc theo trường hợp của NLĐ. */
+export const scannedPapersFor = (
+  serviceType: NenkinServiceType,
+  caseType: WorkerCaseType = WorkerCaseType.RETURN_HOME,
+) =>
+  (SCANNED_PAPERS[serviceType] || []).filter(
+    (p) => !p.caseTypes || p.caseTypes.includes(caseType),
+  );
 
 /**
  * Giấy tờ chỉ dùng khi người lao động về nước hẳn.
@@ -543,7 +580,7 @@ export const allPapersFor = (
   caseType: WorkerCaseType = WorkerCaseType.RETURN_HOME,
 ): { code: string; name: string; scanned: boolean }[] => [
   ...papersFor(serviceType, caseType).map((p) => ({ ...p, scanned: false })),
-  ...(SCANNED_PAPERS[serviceType] || []).map((p) => ({
+  ...scannedPapersFor(serviceType, caseType).map((p) => ({
     code: p.code,
     name: p.name,
     scanned: true,
