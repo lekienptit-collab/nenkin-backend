@@ -129,10 +129,12 @@ export class NenkinPdfService {
       });
     }
 
-    // Giấy tờ bản scan: không có mẫu để điền, chỉ đưa ảnh người lao động đã
-    // tải lên vào một trang A4 rồi ghép vào cuối bộ hồ sơ.
+    // Giấy tờ đính kèm: không có mẫu để điền, chỉ đưa ảnh người lao động đã
+    // tải lên vào các trang A4 rồi ghép vào cuối bộ hồ sơ.
     for (const scanned of SCANNED_PAPERS[serviceType] || []) {
-      const bytes = await this.imageToPdf(context.worker[scanned.field]);
+      const bytes = await this.imagesToPdf(
+        scanned.fields.map((f) => context.worker[f] as string | undefined),
+      );
       const sortOrder = results.length;
       if (!bytes) {
         results.push({
@@ -203,43 +205,58 @@ export class NenkinPdfService {
    * Đưa một ảnh giấy tờ vào giữa trang A4 để in kèm bộ hồ sơ.
    * Trả về null khi không đọc được file hoặc định dạng không nhúng được.
    */
-  private async imageToPdf(imageUrl?: string): Promise<Uint8Array | null> {
-    const fullPath = imageUrl
-      ? this.uploadService.resolvePublicUrl(imageUrl)
-      : null;
-    if (!fullPath) {
-      return null;
-    }
-
-    const bytes = readFileSync(fullPath);
+  /**
+   * Ghép các ảnh giấy tờ thành một file PDF, mỗi ảnh một trang A4.
+   * Trả về null khi không có ảnh nào đọc được.
+   */
+  private async imagesToPdf(
+    imageUrls: (string | undefined)[],
+  ): Promise<Uint8Array | null> {
     const doc = await PDFDocument.create();
-    const ext = extname(fullPath).toLowerCase();
+    let added = 0;
 
-    let image: PDFImage;
-    try {
-      image =
-        ext === '.png' ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
-    } catch {
-      this.logger.warn(`Không nhúng được ảnh "${imageUrl}" vào PDF`);
-      return null;
+    for (const imageUrl of imageUrls) {
+      const fullPath = imageUrl
+        ? this.uploadService.resolvePublicUrl(imageUrl)
+        : null;
+      if (!fullPath) {
+        continue;
+      }
+
+      const bytes = readFileSync(fullPath);
+      const ext = extname(fullPath).toLowerCase();
+
+      let image: PDFImage;
+      try {
+        image =
+          ext === '.png'
+            ? await doc.embedPng(bytes)
+            : await doc.embedJpg(bytes);
+      } catch {
+        // File PDF hoặc định dạng ảnh không nhúng được thì bỏ qua trang đó.
+        this.logger.warn(`Không nhúng được ảnh "${imageUrl}" vào PDF`);
+        continue;
+      }
+
+      const page = doc.addPage(PageSizes.A4);
+      const margin = 40;
+      const scale = Math.min(
+        (page.getWidth() - margin * 2) / image.width,
+        (page.getHeight() - margin * 2) / image.height,
+        1,
+      );
+      const width = image.width * scale;
+      const height = image.height * scale;
+      page.drawImage(image, {
+        x: (page.getWidth() - width) / 2,
+        y: (page.getHeight() - height) / 2,
+        width,
+        height,
+      });
+      added += 1;
     }
 
-    const page = doc.addPage(PageSizes.A4);
-    const margin = 40;
-    const scale = Math.min(
-      (page.getWidth() - margin * 2) / image.width,
-      (page.getHeight() - margin * 2) / image.height,
-      1,
-    );
-    const width = image.width * scale;
-    const height = image.height * scale;
-    page.drawImage(image, {
-      x: (page.getWidth() - width) / 2,
-      y: (page.getHeight() - height) / 2,
-      width,
-      height,
-    });
-    return doc.save();
+    return added > 0 ? doc.save() : null;
   }
 
   /** Điền dữ liệu lên mẫu PDF, trả về nội dung file kết quả. */

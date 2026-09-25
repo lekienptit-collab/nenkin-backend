@@ -481,18 +481,36 @@ export const NENKIN_PAPER_TEMPLATES: Record<
 };
 
 /**
- * Giấy tờ được ghép từ ảnh người lao động tải lên, không phải mẫu PDF điền sẵn.
- * `field` là tên trường chứa URL ảnh trên hồ sơ người lao động.
+ * Giấy tờ đính kèm, ghép từ ảnh người lao động đã tải lên chứ không phải mẫu
+ * PDF điền sẵn. `fields` là các trường chứa URL ảnh trên hồ sơ người lao động;
+ * mỗi ảnh có sẵn thành một trang trong giấy tờ đó.
+ *
+ * Danh sách và tên gọi giữ đúng như hệ thống cũ hiển thị ở thủ tục lần 1.
  */
 export const SCANNED_PAPERS: Record<
   NenkinServiceType,
-  { code: string; name: string; field: string }[]
+  { code: string; name: string; fields: string[] }[]
 > = {
   [NenkinServiceType.FIRST]: [
     {
-      code: 'InsuranceLossCertificate',
-      name: 'Giấy xác nhận cắt bảo hiểm Nenkin (資格喪失証明書)',
-      field: 'insuranceLossImage',
+      code: 'PassportCopy',
+      name: 'Hộ chiếu',
+      fields: ['passportFirstPage', 'passportSecondPage', 'passportStampPage'],
+    },
+    {
+      code: 'ResidenceCardCopy',
+      name: 'Thẻ ngoại kiều',
+      fields: ['residenceCardFrontImage', 'residenceCardBackImage'],
+    },
+    {
+      code: 'NenkinBookCopy',
+      name: 'Sổ Nenkin',
+      fields: ['nenkinBookImage'],
+    },
+    {
+      code: 'BankCertificateCopy',
+      name: 'Giấy xác nhận tài khoản ngân hàng',
+      fields: ['bankImage', 'bankImageBack'],
     },
   ],
   [NenkinServiceType.SECOND]: [],
