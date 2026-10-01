@@ -16,7 +16,10 @@ import {
   WorkerDocumentType,
 } from '../ocr.constants';
 import { ExtractWorkerDocumentsDto } from '../dto/ocr.dto';
-import { GroqRateLimitError, GroqVisionService } from './groq-vision.service';
+import {
+  OpenAIRateLimitError,
+  OpenAIVisionService,
+} from './openai-vision.service';
 
 /** Kết quả đọc của một ảnh. */
 export interface DocumentResult {
@@ -34,12 +37,15 @@ export interface ExtractResult {
   results: DocumentResult[];
 }
 
+/**
+ * Định dạng OpenAI nhận được. HEIC (ảnh chụp iPhone) tải lên được nhưng
+ * OpenAI từ chối, nên báo không hỗ trợ ngay thay vì tốn một lượt gọi.
+ */
 const MIME_BY_EXT: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
   '.png': 'image/png',
   '.webp': 'image/webp',
-  '.heic': 'image/heic',
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -49,16 +55,16 @@ export class WorkerOcrService {
   private readonly logger = new Logger(WorkerOcrService.name);
 
   constructor(
-    private readonly groq: GroqVisionService,
+    private readonly vision: OpenAIVisionService,
     private readonly uploadService: UploadService,
   ) {}
 
   get isConfigured(): boolean {
-    return this.groq.isConfigured;
+    return this.vision.isConfigured;
   }
 
   async extract(payload: ExtractWorkerDocumentsDto): Promise<ExtractResult> {
-    if (!this.groq.isConfigured) {
+    if (!this.vision.isConfigured) {
       throw new CBadRequestException(ErrorCode.OCR_NOT_CONFIGURED);
     }
     const documents = (payload.documents || []).slice(
@@ -69,12 +75,12 @@ export class WorkerOcrService {
       throw new CBadRequestException(ErrorCode.OCR_NO_DOCUMENT);
     }
 
-    // Gọi tuần tự: Groq giới hạn số token mỗi phút nên gọi song song sẽ
-    // lập tức dính 429 cho phần lớn ảnh.
-    const results: DocumentResult[] = [];
-    for (const document of documents) {
-      results.push(await this.readOne(document.type, document.url));
-    }
+    // Gọi song song: hạn mức của OpenAI dư cho 6 ảnh một lúc, ảnh nào lỡ
+    // dính 429 thì tự chờ rồi thử lại. Promise.all giữ đúng thứ tự đầu vào
+    // nên `merge` vẫn ưu tiên giấy tờ gửi trước như cũ.
+    const results = await Promise.all(
+      documents.map((document) => this.readOne(document.type, document.url)),
+    );
 
     return { fields: this.merge(results), results };
   }
@@ -103,14 +109,14 @@ export class WorkerOcrService {
     }
 
     try {
-      const raw = await this.groq.extractJson(reader.prompt, {
+      const raw = await this.vision.extractJson(reader.prompt, {
         buffer: readFileSync(fullPath),
         mimeType,
       });
       return { ...base, success: true, fields: this.normalize(type, raw) };
     } catch (error) {
       const errorCode =
-        error instanceof GroqRateLimitError
+        error instanceof OpenAIRateLimitError
           ? ErrorCode.OCR_RATE_LIMITED
           : error?.getResponse?.()?.msg || ErrorCode.OCR_PROVIDER_ERROR;
       this.logger.warn(`Đọc ${type} thất bại: ${errorCode}`);

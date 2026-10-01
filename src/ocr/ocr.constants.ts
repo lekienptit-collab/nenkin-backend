@@ -29,6 +29,21 @@ Chép đúng nguyên văn những gì nhìn thấy, không tự sửa chính t�
 Ngày tháng luôn trả về dạng YYYY-MM-DD; nếu ảnh ghi theo niên hiệu Nhật
 (昭和/平成/令和) thì quy đổi sang dương lịch.`;
 
+/**
+ * Cách cắt địa chỉ Nhật thành 3 ô của form. Dùng chung cho cả 2 mặt thẻ
+ * ngoại kiều - thiếu quy tắc này model hay xếp "三丁目" vào ô 市区町村.
+ */
+const ADDRESS_SPLIT_RULES = `Tách địa chỉ thành đúng 3 phần, cắt theo quy tắc sau:
+- addressJpPrefecture: CHỈ tên 都道府県 (kết thúc bằng 都/道/府/県)
+- addressJpDistrict: phần từ sau 都道府県 đến hết tên 町域, tức là dừng NGAY TRƯỚC
+  con số hoặc chữ số Nhật đầu tiên chỉ địa chỉ (一丁目, 三丁目, 1丁目, 96番地...)
+- addressJpHouseNumber: TOÀN BỘ phần còn lại, gồm 丁目/番地/号, tên chung cư và số phòng
+
+Ví dụ với địa chỉ "栃木県真岡市久下田西一丁目96番地3 マンションアプライ 105号":
+  addressJpPrefecture   = "栃木県"
+  addressJpDistrict     = "真岡市久下田西"
+  addressJpHouseNumber  = "一丁目96番地3 マンションアプライ 105号"`;
+
 export const DOCUMENT_READERS: Record<WorkerDocumentType, DocumentReader> = {
   [WorkerDocumentType.PASSPORT_FIRST]: {
     label: 'Hộ chiếu trang đầu',
@@ -60,16 +75,8 @@ Schema:
     label: 'Thẻ ngoại kiều mặt trước',
     prompt: `Đây là ảnh mặt trước thẻ ngoại kiều Nhật Bản (在留カード).
 ${COMMON_RULES}
-Tách riêng địa chỉ ở mục 住居地 thành đúng 3 phần, cắt theo quy tắc sau:
-- addressJpPrefecture: CHỈ tên 都道府県 (kết thúc bằng 都/道/府/県)
-- addressJpDistrict: phần từ sau 都道府県 đến hết tên 町域, tức là dừng NGAY TRƯỚC
-  con số hoặc chữ số Nhật đầu tiên chỉ địa chỉ (一丁目, 1丁目, 96番地...)
-- addressJpHouseNumber: TOÀN BỘ phần còn lại, gồm 丁目/番地/号, tên chung cư và số phòng
-
-Ví dụ với 住居地 là "栃木県真岡市久下田西一丁目96番地3 マンションアプライ 105号":
-  addressJpPrefecture   = "栃木県"
-  addressJpDistrict     = "真岡市久下田西"
-  addressJpHouseNumber  = "一丁目96番地3 マンションアプライ 105号"
+Địa chỉ lấy ở mục 住居地.
+${ADDRESS_SPLIT_RULES}
 Schema:
 {
   "name": "họ và tên in hoa",
@@ -87,13 +94,14 @@ Schema:
     prompt: `Đây là ảnh mặt sau thẻ ngoại kiều Nhật Bản (在留カード),
 nơi ghi lịch sử thay đổi địa chỉ cư trú (住居地記載欄).
 ${COMMON_RULES}
-Lấy địa chỉ MỚI NHẤT (dòng cuối cùng có nội dung), tách thành 3 phần như dưới.
+Lấy địa chỉ MỚI NHẤT (dòng cuối cùng có nội dung).
 Nếu mặt sau không ghi địa chỉ nào thì trả về null cho cả 3 trường.
+${ADDRESS_SPLIT_RULES}
 Schema:
 {
-  "addressJpPrefecture": "chỉ tên 都道府県",
-  "addressJpDistrict": "phần 市区町村 và 町域",
-  "addressJpHouseNumber": "số nhà, tên chung cư, số phòng"
+  "addressJpPrefecture": "giữ nguyên tiếng Nhật",
+  "addressJpDistrict": "giữ nguyên tiếng Nhật",
+  "addressJpHouseNumber": "giữ nguyên tiếng Nhật"
 }`,
   },
 
@@ -168,5 +176,5 @@ export const FIELD_SOURCE_PRIORITY: Partial<
   ],
 };
 
-/** Số giấy tờ tối đa cho một lần gọi, tránh vượt hạn mức của Groq. */
+/** Số giấy tờ tối đa cho một lần gọi, tránh vượt hạn mức của OpenAI. */
 export const MAX_DOCUMENTS_PER_REQUEST = 6;

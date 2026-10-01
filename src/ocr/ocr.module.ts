@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { UploadModule } from 'src/uploads/uploads.module';
 import { OcrController } from './ocr.controller';
-import { GroqVisionService } from './services/groq-vision.service';
+import { OpenAIVisionService } from './services/openai-vision.service';
 import { WorkerOcrService } from './services/worker-ocr.service';
 
 @Module({
   imports: [UploadModule],
   controllers: [OcrController],
-  providers: [GroqVisionService, WorkerOcrService],
+  providers: [OpenAIVisionService, WorkerOcrService],
   exports: [WorkerOcrService],
 })
 export class OcrModule {}

@@ -77,7 +77,7 @@ src/
 ├── roles/                   # CRUD quyền + seed + nạp grants vào Redis
 ├── users/                   # CRUD thành viên + /me (hồ sơ, đổi mật khẩu)
 ├── uploads/                 # tải ảnh giấy tờ lên kho file cục bộ
-├── ocr/                     # đọc giấy tờ bằng AI (Groq) -> gợi ý điền form
+├── ocr/                     # đọc giấy tờ bằng AI (OpenAI) -> gợi ý điền form
 ├── master-data/             # tỉnh thành, ngân hàng + tra mã bưu điện Nhật
 ├── workers/                 # CRUD người lao động + trạng thái hồ sơ Nenkin
 ├── agents/                  # CRUD người đại diện (người được uỷ quyền)
@@ -267,28 +267,38 @@ Một vài quy ước rút ra từ hệ thống cũ, đã hiện thực sẵn:
 
 ## Đọc giấy tờ bằng AI (OCR)
 
-Ảnh giấy tờ đã tải lên được gửi cho **Groq** để đọc và điền sẵn form người lao động.
+Ảnh giấy tờ đã tải lên được gửi cho **OpenAI** để đọc và điền sẵn form người lao động.
 
 ### Cấu hình
 
 ```bash
-GROQ_API_KEY=...                      # lấy ở https://console.groq.com/keys
-GROQ_MODEL=qwen/qwen3.8-27b           # BẮT BUỘC là model nhận được ảnh
+OPENAI_API_KEY=...                    # lấy ở https://platform.openai.com/api-keys
+OPENAI_MODEL=gpt-4.1-mini             # BẮT BUỘC là model nhận được ảnh
 ```
 
-Để trống `GROQ_API_KEY` là tắt tính năng: `GET /ocr/status` trả `enabled: false`,
+Để trống `OPENAI_API_KEY` là tắt tính năng: `GET /ocr/status` trả `enabled: false`,
 giao diện tự ẩn khối OCR, mọi trường vẫn nhập tay bình thường.
 
-**Model phải nhận được ảnh.** Kiểm tra bằng `GET https://api.groq.com/openai/v1/models`
-và tìm model có `"input_modalities"` chứa `"image"` — phần lớn model trên Groq chỉ nhận
-text. Tại thời điểm viết, `qwen/qwen3.8-27b` là model vision khả dụng.
+**Chọn model.** Model phải nhận được ảnh và chấp nhận `temperature: 0`. Kết quả thử
+(10/2026):
+
+| Model | Đã thử trên | Kết quả | Token/ảnh |
+| --- | --- | --- | --- |
+| `gpt-4.1-mini` (mặc định) | đủ 6 loại giấy tờ | đúng cả 31 trường, kể cả quy đổi 平成 → dương lịch | ~900 |
+| `gpt-5.4-mini` | ảnh sổ Nenkin | đúng | ~700 |
+| `gpt-4o-mini` | ảnh sổ Nenkin | đúng | **~25.000** |
+
+Không dùng `gpt-4o-mini`: OpenAI tính ảnh của model này đắt gấp ~30 lần.
+
+**Định dạng ảnh.** OpenAI chỉ nhận JPG, PNG, WEBP (và GIF). Ảnh HEIC chụp từ iPhone vẫn
+tải lên được nhưng sẽ báo `OCR_IMAGE_NOT_SUPPORTED`, không gửi đi.
 
 ### Luồng xử lý
 
 1. Người dùng tải ảnh lên qua `POST /uploads/image`, nhận về URL.
 2. Giao diện gửi các URL đó kèm loại giấy tờ tới `POST /ocr/worker-documents`.
 3. Backend đọc file từ đĩa, gửi ảnh base64 + prompt riêng cho từng loại giấy tờ,
-   bắt model trả JSON (`response_format: json_object`).
+   bắt model trả JSON (`response_format: json_object`, ảnh gửi ở `detail: high`).
 4. Kết quả thô được chuẩn hoá về đúng tên và kiểu trường của form
    (giới tính → 0/1, tên tỉnh tiếng Nhật → mã tỉnh, mã SWIFT → quốc gia ngân hàng...).
 5. Giao diện hiện bảng đối chiếu để người dùng **duyệt trước khi điền** — AI chỉ gợi ý,
@@ -308,20 +318,23 @@ Tất cả nằm trong `src/ocr/ocr.constants.ts`:
 
 Service và controller không phải sửa gì khi thêm loại giấy tờ mới.
 
-### Giới hạn tốc độ
+### Giới hạn tốc độ và hạn mức
 
-Gói miễn phí của Groq giới hạn khoảng **7.000 token đầu vào mỗi phút**, mỗi ảnh tốn
-~1.900 token, tức chỉ đọc được khoảng 3 ảnh/phút. Vì vậy:
+Hạn mức của OpenAI (ngay cả bậc thấp nhất) dư cho 6 ảnh một lúc, nên:
 
-- Các ảnh được gọi **tuần tự**, không song song (gọi song song là dính 429 ngay).
-- Gặp 429 thì chờ đúng số giây Groq đề nghị rồi thử lại, tối đa `GROQ_MAX_RETRIES` lần.
-- Đọc đủ 6 ảnh mất khoảng 60-90 giây. Ảnh nào vẫn lỗi thì trả `OCR_RATE_LIMITED`
-  trong `results[]`, giao diện hiện cảnh báo riêng cho ảnh đó chứ không hỏng cả lần đọc.
+- Các ảnh được gọi **song song**; đọc đủ 6 ảnh mất khoảng 3-5 giây.
+- Gặp 429 do giới hạn tốc độ thì chờ đúng thời gian OpenAI đề nghị (header
+  `retry-after-ms`) rồi thử lại, tối đa `OPENAI_MAX_RETRIES` lần. Vẫn lỗi thì trả
+  `OCR_RATE_LIMITED` cho riêng ảnh đó, các ảnh khác vẫn dùng được.
+- **Tài khoản hết tiền / hết hạn mức** (`insufficient_quota`) cũng trả 429 nhưng chờ bao lâu
+  cũng không hết, nên không thử lại mà trả `OCR_QUOTA_EXCEEDED` — giao diện báo
+  *"Tài khoản AI đã hết hạn mức sử dụng, cần nạp thêm"*. Gặp lỗi này thì nạp thêm tiền ở
+  https://platform.openai.com/settings/organization/billing, không phải sửa code.
 
 ### Lưu ý về dữ liệu cá nhân
 
 Ảnh hộ chiếu, thẻ ngoại kiều, sổ Nenkin của người lao động sẽ được gửi sang máy chủ của
-Groq để xử lý. Cần bảo đảm việc này phù hợp với thoả thuận xử lý dữ liệu cá nhân mà công
+OpenAI để xử lý. Cần bảo đảm việc này phù hợp với thoả thuận xử lý dữ liệu cá nhân mà công
 ty đang áp dụng trước khi bật tính năng trên môi trường thật.
 
 ## Kho file
@@ -358,8 +371,8 @@ Xem đầy đủ trong `.env.example`. Các biến quan trọng:
 | `STORAGE_ROOT` | `<backend>/storage` | Kho ảnh giấy tờ + PDF hồ sơ Nenkin |
 | `STORAGE_PUBLIC_PATH` | /media | Tiền tố URL phục vụ file tĩnh |
 | `STORAGE_MAX_FILE_SIZE` | 10485760 | 10MB mỗi file |
-| `GROQ_API_KEY` | - | Để trống = tắt OCR |
-| `GROQ_MODEL` | qwen/qwen3.8-27b | Phải là model nhận được ảnh |
-| `GROQ_MAX_RETRIES` | 2 | Số lần thử lại khi bị giới hạn tốc độ |
+| `OPENAI_API_KEY` | - | Để trống = tắt OCR |
+| `OPENAI_MODEL` | gpt-4.1-mini | Phải là model nhận được ảnh |
+| `OPENAI_MAX_RETRIES` | 2 | Số lần thử lại khi bị giới hạn tốc độ |
 | `JWT_SECRET` | - | **Bắt buộc đổi trên production** |
 | `ADMIN_PASSWORD` | Admin@123 | Mật khẩu admin khởi tạo |
