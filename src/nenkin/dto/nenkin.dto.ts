@@ -85,7 +85,7 @@ export class CreateNenkinProcedureDto {
   @ApiProperty({
     required: false,
     description:
-      'Ngày có kết quả Nenkin lần 1, ghi đè lên hồ sơ người lao động',
+      'Ngày có kết quả Nenkin lần 1, ghi đè lên hồ sơ người lao động. Năm khai thuế (年分) của bộ hồ sơ lần 2 lấy theo ngày này.',
   })
   @IsOptional()
   @IsDateString()

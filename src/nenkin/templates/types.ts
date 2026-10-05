@@ -24,13 +24,18 @@ type Coord = number | ((c: FillContext) => number | undefined);
  * dưới-trái tờ giấy, đơn vị point, y tăng khi đi lên.
  */
 export type Draw =
-  /** In một chuỗi bắt đầu từ (x, y). */
+  /**
+   * In một chuỗi bắt đầu từ (x, y). Có `maxWidth` thì chuỗi dài hơn ô sẽ tự
+   * thu nhỏ cỡ chữ cho vừa (không nhỏ hơn `minSize`).
+   */
   | {
       kind: 'text';
       page?: number;
       x: Coord;
       y: Coord;
       size: number;
+      maxWidth?: number;
+      minSize?: number;
       value: Value;
     }
   /**
@@ -59,8 +64,8 @@ export type Draw =
       page?: number;
       cx: Coord;
       cy: Coord;
-      rx: number;
-      ry: number;
+      rx: Coord;
+      ry: Coord;
       /** Chỉ khoanh khi hàm này trả về true. */
       when?: (c: FillContext) => boolean;
     }
@@ -142,6 +147,29 @@ export const deaccent = (v?: string) =>
 
 /** Chỉ giữ chữ số. */
 export const digitsOnly = (v?: string) => (v || '').replace(/[^0-9]/g, '');
+
+/**
+ * Các từ trong tên Katakana. Người dùng gõ lẫn dấu cách toàn角/半角, có khi
+ * hai dấu liền nhau ("ゴー　グエン 　ホアン 　ロン").
+ */
+export const furiganaWords = (v?: string) =>
+  (v || '').split(/[\s　]+/).filter(Boolean);
+
+/** Tên Katakana in thành một dòng, các từ cách nhau một dấu cách toàn角. */
+export const furiganaText = (v?: string) =>
+  furiganaWords(v).join('　') || undefined;
+
+/**
+ * Tên Katakana điền vào dãy ô: mỗi ký tự một ô, giữa các từ để trống một ô
+ * (như hệ thống cũ). Tên dài hơn số ô thì bỏ ô trống giữa các từ để giữ đủ chữ.
+ */
+export const furiganaBoxes = (v: string | undefined, boxes: number) => {
+  const words = furiganaWords(v);
+  const spaced = words.join(' ');
+  return [...spaced].length <= boxes ? spaced : words.join('');
+};
+
+export { toShortTaxOfficeName } from 'src/master-data/tax-office-matcher';
 
 /** 1111111 -> "1,111,111". */
 export const money = (v?: string | number) => {

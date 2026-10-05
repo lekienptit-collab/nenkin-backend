@@ -1,4 +1,11 @@
-import { digitsOnly, jpAddress, money, PaperTemplate, toWareki } from './types';
+import {
+  digitsOnly,
+  furiganaText,
+  jpAddress,
+  money,
+  PaperTemplate,
+  toWareki,
+} from './types';
 
 /** Ô tiền của mục 退職 (74) — 7 ô, dồn phải. */
 const AMOUNT_XS = [195, 210, 225, 240, 255, 270, 285];
@@ -43,6 +50,15 @@ export const declarationSeparate: PaperTemplate = {
       ys: [721, 711],
       perLine: 25,
       value: (c) => jpAddress(c.worker),
+    },
+    // フリガナ, ghi ngay trên dòng họ tên.
+    {
+      kind: 'text',
+      x: 102,
+      y: 693,
+      size: 9,
+      maxWidth: 185,
+      value: (c) => furiganaText(c.worker.nameFurigana),
     },
     { kind: 'text', x: 102, y: 677, size: 12, value: (c) => c.worker.name },
 

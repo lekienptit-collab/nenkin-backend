@@ -1,4 +1,11 @@
-import { dateParts, jpAddress, PaperTemplate, toWareki } from './types';
+import {
+  dateParts,
+  furiganaText,
+  jpAddress,
+  PaperTemplate,
+  toShortTaxOfficeName,
+  toWareki,
+} from './types';
 
 /** Tâm vòng tròn khoanh niên hiệu ở ô 生年月日 (大正/昭和/平成/令和 từ trên xuống). */
 const ERA_CIRCLE_CY: Record<string, number> = {
@@ -41,13 +48,14 @@ export const taxManagerNotice: PaperTemplate = {
       value: (c) => jpAddress(c.worker),
     },
 
-    // --- 税務署長 / ngày nộp ---
+    // --- 税務署長 / ngày nộp. Mẫu in sẵn "税務署長" nên chỉ ghi phần tên. ---
     {
       kind: 'text',
       x: 81,
       y: 675,
       size: 12,
-      value: (c) => c.procedure.taxOffice,
+      maxWidth: 74,
+      value: (c) => toShortTaxOfficeName(c.procedure.taxOffice) || undefined,
     },
     {
       kind: 'text',
@@ -77,9 +85,17 @@ export const taxManagerNotice: PaperTemplate = {
       x: 277,
       y: 619,
       size: 9,
-      value: (c) => c.worker.nameFurigana,
+      value: (c) => furiganaText(c.worker.nameFurigana),
     },
-    { kind: 'text', x: 277, y: 597, size: 10, value: (c) => c.worker.name },
+    // Tên dài thì thu nhỏ cho khỏi lấn sang cột 生年月日.
+    {
+      kind: 'text',
+      x: 277,
+      y: 597,
+      size: 10,
+      maxWidth: 126,
+      value: (c) => c.worker.name,
+    },
     {
       kind: 'circle',
       cx: 441.1,

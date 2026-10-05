@@ -8,6 +8,8 @@ import { WorkerOcrService } from './services/worker-ocr.service';
   imports: [UploadModule],
   controllers: [OcrController],
   providers: [OpenAIVisionService, WorkerOcrService],
-  exports: [WorkerOcrService],
+  // OpenAIVisionService dùng lại ở master-data để chọn sở thuế khi một quận
+  // chia cho nhiều sở.
+  exports: [WorkerOcrService, OpenAIVisionService],
 })
 export class OcrModule {}

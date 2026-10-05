@@ -17,6 +17,7 @@
     "migrate:up": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./src/ormconfig.ts",
     "migrate:down": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d ./src/ormconfig.ts",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "data:refresh": "node scripts/build-reference-data.js",
     "test": "jest"
   },
   "dependencies": {

@@ -205,8 +205,9 @@ Sửa yêu cầu nghiệp vụ thì chỉ cần sửa 2 mảng `FIRST_REQUIRED_F
 - Mỗi người lao động có tối đa **1 hồ sơ cho mỗi lần thủ tục** (ràng buộc unique
   `worker_id` + `service_type`). Gọi lại `POST /nenkin/procedures` là cập nhật hồ sơ cũ
   và sinh lại toàn bộ giấy tờ.
-- Thủ tục lần 2 (khai thuế) chỉ làm được sau khi đã có hồ sơ lần 1 — nếu chưa,
-  API trả `NENKIN_FIRST_REQUIRED`.
+- Thủ tục lần 2 (khai thuế) **không** đòi phải có hồ sơ lần 1 trên hệ thống: nhiều
+  người tự lấy Nenkin lần 1 rồi mới nhờ làm lần 2. Ngày có kết quả lần 1 (quyết định
+  năm khai thuế 年分) nhập ở màn hình lần 2 thì lưu luôn về hồ sơ người lao động.
 - Hồ sơ vẫn tạo được khi người lao động thiếu thông tin; phần thiếu trả về trong
   `missingFields` để giao diện cảnh báo.
 
@@ -262,8 +263,67 @@ Một vài quy ước rút ra từ hệ thống cũ, đã hiện thực sẵn:
 - Ngân hàng trong nước Nhật thì bỏ trống mã SWIFT và ghi thêm tên tài khoản Katakana.
 - Ô 〒 trên 委任状 luôn in `000-0000` vì địa chỉ người lao động ở nước ngoài.
 - Năm khai thuế trên 3 tờ thuế lấy theo **năm nhận kết quả Nenkin lần 1**.
-- Trang 3 của 脱退一時金請求書 (mục 7 — lịch sử tham gia chế độ lương hưu) **không được
-  in**, giống hệ thống cũ; phôi mẫu chỉ giữ 2 trang đầu.
+- Trang 3 của 脱退一時金請求書 (mục 7 — lịch sử tham gia chế độ lương hưu) in từ bảng
+  "Quá trình tham gia chế độ lương hưu chung" của người lao động, tối đa 4 dòng.
+- Tên sở thuế chỉ in phần tên (`長尾`), vì mẫu đã in sẵn chữ `税務署長`. Hồ sơ cũ lưu
+  `長尾税務署` vẫn in đúng.
+- 申告書B 第一表 (theo góp ý của khách trên bộ hồ sơ mẫu):
+  - フリガナ điền vào 14 ô liền nhau, mỗi ký tự một ô, giữa các từ để trống một ô
+    (như hệ thống cũ). Tên dài hơn 14 ô thì bỏ ô trống giữa các từ.
+  - 世帯主の氏名 = tên Katakana của người lao động, 世帯主との続柄 = `本人`.
+  - Khoanh `分離` ở dòng 種類.
+  - ㊾ 申告納税額 ghi số âm (`ー110913`); ㊼ ghi số thuế đã khấu trừ.
+  - Ô nơi nhận tiền hoàn thuế: khoanh sát chữ `銀行` / `金庫・組合` / `農協・漁協` và
+    `本店` / `支店` / `出張所`…, đoán theo tên ngân hàng và tên chi nhánh (mặc định
+    銀行 + 支店).
+- 第三表 và 第二表 ghi tên Katakana ở ô フリガナ, ngay trên họ tên.
+- Lệnh `text` có `maxWidth` thì chuỗi dài tự thu nhỏ cỡ chữ cho vừa ô.
+
+### Giấy tờ đính kèm
+
+Ảnh người lao động tải lên được ghép vào cuối bộ hồ sơ, mỗi ảnh một trang A4 — riêng
+**thẻ ngoại kiều in 2 mặt trên cùng một trang** (mặt trước ở trên), ở cả lần 1 và lần 2.
+Danh sách nằm ở `SCANNED_PAPERS` (`src/common/constatns/master-data.ts`); thêm
+`onePage: true` cho giấy tờ nào muốn dồn ảnh vào một trang.
+
+## Tra mã bưu điện và sở thuế theo địa chỉ
+
+Thẻ ngoại kiều không in mã bưu điện, và tờ khai lần 2 cần đúng sở thuế (税務署) phụ trách
+địa chỉ cuối cùng ở Nhật. Hai việc này dùng **dữ liệu chính thức đóng gói sẵn** trong
+`assets/reference/`, không phụ thuộc dịch vụ ngoài lúc chạy:
+
+| File | Nguồn | Nội dung |
+| --- | --- | --- |
+| `jp-postal-codes.json.gz` | 日本郵便 (utf_ken_all.zip) | ~124.500 mã bưu điện |
+| `tax-offices.json` | 国税庁「税務署の所在地などを知りたい方」 | 524 sở thuế: khu vực quản lý (管轄区域), địa chỉ gửi hồ sơ qua bưu điện, danh sách 町名 của các quận chia cho nhiều sở |
+
+API (cần token):
+
+| Method | Path | Mô tả |
+| --- | --- | --- |
+| GET | `/master-data/jp-postal-code?prefectureCode=37&address=東かがわ市引田3475` | Tra mã bưu điện từ địa chỉ. `matchLevel`: `town` khớp đúng khu phố, `city` chỉ thấy 市区町村 (trả mã chung), `none` không nhận ra |
+| GET | `/master-data/tax-offices` | Danh sách sở thuế cho ô chọn |
+| GET | `/master-data/tax-offices/suggest?prefectureCode=37&address=…` | Gợi ý sở thuế. `method`: `address` tra thẳng theo 管轄区域, `ai` quận chia cho nhiều sở nên nhờ AI chọn, `none` để người dùng tự chọn trong `candidates` |
+
+**AI chỉ được dùng khi một quận chia cho nhiều sở** (vd. 台東区 = 浅草 + 東京上野): gửi
+cho OpenAI địa chỉ (chỉ phần chữ, không gửi ảnh) cùng danh sách 町名 của từng sở ứng
+viên, và chỉ chấp nhận câu trả lời nằm trong danh sách đó. Kết quả được nhớ trong bộ nhớ
+để mở lại hồ sơ không tốn thêm lượt gọi. Chưa cấu hình `OPENAI_API_KEY` thì trả về các
+ứng viên để người dùng tự chọn.
+
+Mã bưu điện thì **không** hỏi AI: AI hay bịa mã bưu điện trông rất thật, mà mã này in
+thẳng lên tờ khai thuế.
+
+**Làm mới dữ liệu** (mã bưu điện đổi hằng tháng; sở thuế đổi khi gom về 業務センター),
+vài tháng một lần hoặc khi thấy sai:
+
+```bash
+npm run data:refresh          # cả hai, mất ~5 phút (đọc trang chi tiết của 524 sở)
+npm run data:refresh -- postal  # chỉ mã bưu điện
+npm run data:refresh -- tax     # chỉ sở thuế
+```
+
+Rồi commit 2 file trong `assets/reference/`.
 
 ## Đọc giấy tờ bằng AI (OCR)
 

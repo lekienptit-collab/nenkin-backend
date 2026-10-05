@@ -3,6 +3,8 @@ import { get } from 'https';
 import { ErrorCode } from 'src/common/constatns/error';
 import { JP_PREFECTURES } from 'src/common/constatns/master-data';
 import { CBadRequestException } from 'src/common/exceptions/bad-request.exception';
+import { reverseLookup, ReverseLookupResult } from './jp-address';
+import { ReferenceDataService } from './reference-data.service';
 
 const ZIPCLOUD_URL = 'https://zipcloud.ibsnet.co.jp/api/search?zipcode=';
 const REQUEST_TIMEOUT = 8000;
@@ -24,6 +26,28 @@ export interface PostalAddress {
 @Injectable()
 export class PostalCodeService {
   private readonly logger = new Logger(PostalCodeService.name);
+
+  constructor(private readonly referenceData: ReferenceDataService) {}
+
+  /**
+   * Chiều ngược lại: tra mã bưu điện từ địa chỉ. Thẻ ngoại kiều không in mã
+   * bưu điện nên sau khi AI đọc địa chỉ từ thẻ, ô mã bưu điện vẫn trống.
+   *
+   * Dùng dữ liệu 日本郵便 đóng gói sẵn chứ không hỏi AI: AI hay bịa mã bưu
+   * điện trông rất thật, mà mã này in thẳng lên tờ khai thuế.
+   */
+  reverseLookup(prefectureCode: string, address: string): ReverseLookupResult {
+    const prefecture = JP_PREFECTURES.find((p) => p.value === prefectureCode);
+    if (!prefecture || !(address || '').trim()) {
+      throw new CBadRequestException(ErrorCode.JP_ADDRESS_INVALID);
+    }
+    return reverseLookup(
+      this.referenceData.postalData,
+      prefectureCode,
+      address,
+      prefecture.label,
+    );
+  }
 
   async lookup(postalCode: string): Promise<{ results: PostalAddress[] }> {
     const normalized = (postalCode || '').replace(/[^0-9]/g, '');

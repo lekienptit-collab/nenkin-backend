@@ -82,24 +82,14 @@ export class NenkinService {
 
     const isSecond = payload.serviceType === NenkinServiceType.SECOND;
 
-    // Lần 2 là khai thuế sau khi đã có kết quả lần 1, nên bắt buộc lần 1 xong trước.
-    if (isSecond) {
-      const first = await this.procedureRepo.findOne({
-        where: {
-          workerId: payload.workerId,
-          serviceType: NenkinServiceType.FIRST,
-        },
+    // Lần 2 không đòi lần 1 phải làm trên hệ thống: nhiều người tự lấy Nenkin
+    // lần 1 rồi mới nhờ làm lần 2. Ngày có kết quả lần 1 (quyết định năm khai
+    // thuế 年分) nhập ở màn hình này thì lưu luôn về hồ sơ NLĐ.
+    if (isSecond && payload.resultDate1) {
+      worker.resultDate1 = payload.resultDate1;
+      await this.workerRepo.update(worker.id, {
+        resultDate1: payload.resultDate1,
       });
-      if (!first) {
-        throw new CBadRequestException(ErrorCode.NENKIN_FIRST_REQUIRED);
-      }
-      // Ngày có kết quả lần 1 nhập ở màn hình này thì lưu luôn về hồ sơ NLĐ.
-      if (payload.resultDate1) {
-        worker.resultDate1 = payload.resultDate1;
-        await this.workerRepo.update(worker.id, {
-          resultDate1: payload.resultDate1,
-        });
-      }
     }
 
     const existing = await this.procedureRepo.findOne({

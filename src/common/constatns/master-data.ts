@@ -488,6 +488,9 @@ export const NENKIN_PAPER_TEMPLATES: Record<
  * `caseTypes` để trống nghĩa là trường hợp nào cũng cần; có giá trị thì chỉ
  * kèm cho đúng những trường hợp đó.
  *
+ * `onePage`: dồn mọi ảnh vào cùng một trang A4, xếp từ trên xuống — thẻ ngoại
+ * kiều in 2 mặt trên cùng một trang như bản photo nộp kèm hồ sơ.
+ *
  * Danh sách và tên gọi giữ đúng như hệ thống cũ hiển thị.
  */
 export const SCANNED_PAPERS: Record<
@@ -497,6 +500,7 @@ export const SCANNED_PAPERS: Record<
     name: string;
     fields: string[];
     caseTypes?: WorkerCaseType[];
+    onePage?: boolean;
   }[]
 > = {
   [NenkinServiceType.FIRST]: [
@@ -509,6 +513,7 @@ export const SCANNED_PAPERS: Record<
       code: 'ResidenceCardCopy',
       name: 'Thẻ ngoại kiều',
       fields: ['residenceCardFrontImage', 'residenceCardBackImage'],
+      onePage: true,
     },
     {
       code: 'NenkinBookCopy',
@@ -531,6 +536,7 @@ export const SCANNED_PAPERS: Record<
       code: 'ResidenceCardCopy',
       name: 'Thẻ ngoại kiều',
       fields: ['residenceCardFrontImage', 'residenceCardBackImage'],
+      onePage: true,
     },
     {
       // Người quay lại Nhật tự nhận tiền hoàn thuế vào tài khoản của mình nên

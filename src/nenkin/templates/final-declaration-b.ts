@@ -1,4 +1,10 @@
-import { jpAddress, money, PaperTemplate, toWareki } from './types';
+import {
+  furiganaText,
+  jpAddress,
+  money,
+  PaperTemplate,
+  toWareki,
+} from './types';
 
 /**
  * 確定申告書B 第二表 — bảng kê chi tiết thu nhập và thuế đã khấu trừ. 1 trang.
@@ -38,6 +44,15 @@ export const finalDeclarationB: PaperTemplate = {
       ys: [726, 711],
       perLine: 25,
       value: (c) => jpAddress(c.worker),
+    },
+    // フリガナ, ghi ngay trên dòng họ tên.
+    {
+      kind: 'text',
+      x: 100,
+      y: 686,
+      size: 9,
+      maxWidth: 190,
+      value: (c) => furiganaText(c.worker.nameFurigana),
     },
     { kind: 'text', x: 100, y: 670, size: 12, value: (c) => c.worker.name },
 

@@ -67,30 +67,36 @@ export class OpenAIVisionService {
     prompt: string,
     image: { buffer: Buffer; mimeType: string },
   ): Promise<Record<string, any>> {
+    return this.requestJson([
+      { type: 'text', text: prompt },
+      {
+        type: 'image_url',
+        image_url: {
+          url: `data:${image.mimeType};base64,${image.buffer.toString(
+            'base64',
+          )}`,
+          // Giấy tờ có nhiều chữ nhỏ, đọc ở độ phân giải thấp dễ sai.
+          detail: 'high',
+        },
+      },
+    ]);
+  }
+
+  /** Hỏi bằng văn bản (không kèm ảnh), trả về object JSON do model sinh ra. */
+  async completeJson(prompt: string): Promise<Record<string, any>> {
+    return this.requestJson([{ type: 'text', text: prompt }]);
+  }
+
+  private async requestJson(
+    content: Record<string, any>[],
+  ): Promise<Record<string, any>> {
     if (!this.isConfigured) {
       throw new CBadRequestException(ErrorCode.OCR_NOT_CONFIGURED);
     }
 
     const payload = {
       model: this.config.get<string>('openai.model'),
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${image.mimeType};base64,${image.buffer.toString(
-                  'base64',
-                )}`,
-                // Giấy tờ có nhiều chữ nhỏ, đọc ở độ phân giải thấp dễ sai.
-                detail: 'high',
-              },
-            },
-          ],
-        },
-      ],
+      messages: [{ role: 'user', content }],
       temperature: 0,
       // Các model mới của OpenAI không nhận `max_tokens` nữa.
       max_completion_tokens: 2048,

@@ -137,6 +137,7 @@ export class NenkinPdfService {
     )) {
       const bytes = await this.imagesToPdf(
         scanned.fields.map((f) => context.worker[f] as string | undefined),
+        scanned.onePage,
       );
       const sortOrder = results.length;
       if (!bytes) {
@@ -205,18 +206,16 @@ export class NenkinPdfService {
   }
 
   /**
-   * Đưa một ảnh giấy tờ vào giữa trang A4 để in kèm bộ hồ sơ.
-   * Trả về null khi không đọc được file hoặc định dạng không nhúng được.
-   */
-  /**
-   * Ghép các ảnh giấy tờ thành một file PDF, mỗi ảnh một trang A4.
+   * Ghép các ảnh giấy tờ thành một file PDF: mặc định mỗi ảnh một trang A4,
+   * `onePage` thì xếp tất cả lên cùng một trang, từ trên xuống theo thứ tự.
    * Trả về null khi không có ảnh nào đọc được.
    */
   private async imagesToPdf(
     imageUrls: (string | undefined)[],
+    onePage = false,
   ): Promise<Uint8Array | null> {
     const doc = await PDFDocument.create();
-    let added = 0;
+    const images: PDFImage[] = [];
 
     for (const imageUrl of imageUrls) {
       const fullPath = imageUrl
@@ -228,38 +227,63 @@ export class NenkinPdfService {
 
       const bytes = readFileSync(fullPath);
       const ext = extname(fullPath).toLowerCase();
-
-      let image: PDFImage;
       try {
-        image =
+        images.push(
           ext === '.png'
             ? await doc.embedPng(bytes)
-            : await doc.embedJpg(bytes);
+            : await doc.embedJpg(bytes),
+        );
       } catch {
-        // File PDF hoặc định dạng ảnh không nhúng được thì bỏ qua trang đó.
+        // File PDF hoặc định dạng ảnh không nhúng được thì bỏ qua ảnh đó.
         this.logger.warn(`Không nhúng được ảnh "${imageUrl}" vào PDF`);
-        continue;
       }
+    }
 
-      const page = doc.addPage(PageSizes.A4);
-      const margin = 40;
+    if (images.length === 0) {
+      return null;
+    }
+    for (const group of onePage ? [images] : images.map((i) => [i])) {
+      this.drawStacked(doc.addPage(PageSizes.A4), group);
+    }
+    return doc.save();
+  }
+
+  /**
+   * Xếp các ảnh từ trên xuống trong một trang A4: mỗi ảnh được một phần chiều
+   * cao bằng nhau, thu nhỏ giữ đúng tỉ lệ (không phóng to ảnh nhỏ), cả cụm
+   * căn giữa trang.
+   */
+  private drawStacked(page: PDFPage, images: PDFImage[]) {
+    const margin = 40;
+    const gap = images.length > 1 ? 24 : 0;
+    const maxWidth = page.getWidth() - margin * 2;
+    const slotHeight =
+      (page.getHeight() - margin * 2 - gap * (images.length - 1)) /
+      images.length;
+
+    const sizes = images.map((image) => {
       const scale = Math.min(
-        (page.getWidth() - margin * 2) / image.width,
-        (page.getHeight() - margin * 2) / image.height,
+        maxWidth / image.width,
+        slotHeight / image.height,
         1,
       );
-      const width = image.width * scale;
-      const height = image.height * scale;
+      return { width: image.width * scale, height: image.height * scale };
+    });
+    const total =
+      sizes.reduce((sum, s) => sum + s.height, 0) + gap * (images.length - 1);
+
+    // Toạ độ PDF tính từ mép dưới: ảnh đầu tiên (mặt trước) nằm trên cùng.
+    let top = (page.getHeight() + total) / 2;
+    images.forEach((image, i) => {
+      const { width, height } = sizes[i];
       page.drawImage(image, {
         x: (page.getWidth() - width) / 2,
-        y: (page.getHeight() - height) / 2,
+        y: top - height,
         width,
         height,
       });
-      added += 1;
-    }
-
-    return added > 0 ? doc.save() : null;
+      top -= height + gap;
+    });
   }
 
   /** Điền dữ liệu lên mẫu PDF, trả về nội dung file kết quả. */
@@ -300,12 +324,21 @@ export class NenkinPdfService {
       if (draw.when && !draw.when(context)) return;
       const cx = resolveCoord(draw.cx, context);
       const cy = resolveCoord(draw.cy, context);
-      if (cx === undefined || cy === undefined) return;
+      const rx = resolveCoord(draw.rx, context);
+      const ry = resolveCoord(draw.ry, context);
+      if (
+        cx === undefined ||
+        cy === undefined ||
+        rx === undefined ||
+        ry === undefined
+      ) {
+        return;
+      }
       page.drawEllipse({
         x: cx,
         y: cy,
-        xScale: draw.rx,
-        yScale: draw.ry,
+        xScale: rx,
+        yScale: ry,
         borderWidth: 1.2,
         borderColor: rgb(0, 0, 0),
         opacity: 0,
@@ -322,7 +355,14 @@ export class NenkinPdfService {
       const x = resolveCoord(draw.x, context);
       const y = resolveCoord(draw.y, context);
       if (x === undefined || y === undefined) return;
-      page.drawText(text, { x, y, size: draw.size, font });
+      let size = draw.size;
+      if (draw.maxWidth) {
+        const width = font.widthOfTextAtSize(text, size);
+        if (width > draw.maxWidth) {
+          size = Math.max(draw.minSize ?? 5, (size * draw.maxWidth) / width);
+        }
+      }
+      page.drawText(text, { x, y, size, font });
       return;
     }
 
