@@ -1,10 +1,12 @@
 import {
   dateParts,
+  deaccent,
   furiganaText,
   jpAddress,
   PaperTemplate,
   toShortTaxOfficeName,
   toWareki,
+  vnAddress,
 } from './types';
 
 /** Tâm vòng tròn khoanh niên hiệu ở ô 生年月日 (大正/昭和/平成/令和 từ trên xuống). */
@@ -94,7 +96,7 @@ export const taxManagerNotice: PaperTemplate = {
       y: 597,
       size: 10,
       maxWidth: 126,
-      value: (c) => c.worker.name,
+      value: (c) => deaccent(c.worker.name),
     },
     {
       kind: 'circle',
@@ -154,7 +156,13 @@ export const taxManagerNotice: PaperTemplate = {
       size: 10,
       value: (c) => c.agent?.nameFurigana,
     },
-    { kind: 'text', x: 148, y: 409, size: 10, value: (c) => c.agent?.name },
+    {
+      kind: 'text',
+      x: 148,
+      y: 409,
+      size: 10,
+      value: (c) => deaccent(c.agent?.name),
+    },
     {
       kind: 'text',
       x: 431,
@@ -177,17 +185,42 @@ export const taxManagerNotice: PaperTemplate = {
       value: (c) => c.agent?.phoneNumber,
     },
 
-    // --- 2, 3, 4: các câu trả lời cố định của nghiệp vụ này ---
+    // --- 2 法の施行地外における住所: địa chỉ ở Việt Nam của người lao động,
+    // in hoa không dấu, cách nhau bằng dấu phẩy (theo mẫu khách gửi). ---
     {
       kind: 'text',
-      x: 159,
-      y: 329,
+      x: 144,
+      y: 327,
       size: 10,
-      value: () => '日本に不在のため、納税管理人にお任せいたします。',
+      maxWidth: 380,
+      minSize: 7,
+      value: (c) => vnAddress(c.worker, ', '),
+    },
+
+    // --- 3 納税管理人を定めた理由. Mẫu không có dòng kẻ cho mục này nên kẻ
+    // thêm một dòng giống mục 2. ---
+    {
+      kind: 'line',
+      x1: 141.4,
+      y1: 282.2,
+      x2: 526.6,
+      y2: 282.2,
+      thickness: 0.45,
     },
     {
       kind: 'text',
-      x: 212,
+      x: 144,
+      y: 285.5,
+      size: 10,
+      value: () => '日本に不在のため、納税管理人にお任せいたします。',
+    },
+
+    // --- 4 その他参考事項 ---
+    // Năm xuất cảnh ghi đè lên chỗ chữ "平成" (mẫu đã che trắng), kết thúc
+    // trước chữ 年 — để ở x=212 thì "2026" lấn sang chữ 年.
+    {
+      kind: 'text',
+      x: 205.5,
       y: 230,
       size: 10,
       value: (c) => dateParts(c.worker.leaveJapanDate)?.y,

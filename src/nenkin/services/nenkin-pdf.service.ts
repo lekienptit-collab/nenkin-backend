@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { extname, join } from 'path';
 import {
+  LineCapStyle,
   PageSizes,
   PDFDocument,
   PDFFont,
@@ -47,6 +48,12 @@ export interface NenkinDocumentContext {
 // @pdf-lib/fontkit xuất theo kiểu ES module, còn dự án biên dịch ra CommonJS,
 // nên phải lấy `default` khi có.
 const fontkit = (fontkitModule as any).default ?? fontkitModule;
+
+/** Ký tự font có sẵn, và các ký tự đã in mà font không có. */
+interface GlyphCheck {
+  charset: Set<number>;
+  missing: Set<string>;
+}
 
 /** Tên file gộp cả bộ hồ sơ để xem trước / tải về. */
 const MERGED_NAME: Record<NenkinServiceType, string> = {
@@ -295,12 +302,26 @@ export class NenkinPdfService {
     doc.registerFontkit(fontkit);
     const font = await doc.embedFont(this.loadFont(), { subset: true });
     const pages = doc.getPages();
+    const glyphs: GlyphCheck = {
+      charset: new Set(font.getCharacterSet()),
+      missing: new Set(),
+    };
 
     for (const draw of PAPER_TEMPLATES[code].draws) {
       const page = pages[draw.page ?? 0];
       if (page) {
-        this.applyDraw(page, font, draw, context);
+        this.applyDraw(page, font, draw, context, glyphs);
       }
+    }
+
+    // Font không có ký tự nào thì chỗ đó in thành hình hộp ☒ mà không báo lỗi
+    // gì (như dấu ✔ ở ô 永住許可 trước đây, hoặc tên có dấu tiếng Việt "Ễ").
+    if (glyphs.missing.size > 0) {
+      this.logger.warn(
+        `Mẫu ${code}: font không có ký tự ${[...glyphs.missing]
+          .map((ch) => `"${ch}" (U+${ch.codePointAt(0).toString(16)})`)
+          .join(', ')} — chỗ đó sẽ in thành ô trống`,
+      );
     }
     return doc.save();
   }
@@ -319,6 +340,7 @@ export class NenkinPdfService {
     font: PDFFont,
     draw: Draw,
     context: FillContext,
+    glyphs: GlyphCheck,
   ) {
     if (draw.kind === 'circle') {
       if (draw.when && !draw.when(context)) return;
@@ -346,9 +368,41 @@ export class NenkinPdfService {
       return;
     }
 
+    if (draw.kind === 'check') {
+      if (draw.when && !draw.when(context)) return;
+      // Chữ V: nét ngắn đi xuống rồi nét dài đi lên, đầu nét bo tròn.
+      const { x, y, size } = draw;
+      const left = { x: x + size * 0.18, y: y + size * 0.5 };
+      const bottom = { x: x + size * 0.42, y: y + size * 0.18 };
+      const right = { x: x + size * 0.86, y: y + size * 0.88 };
+      const stroke = {
+        thickness: size * 0.12,
+        color: rgb(0, 0, 0),
+        lineCap: LineCapStyle.Round,
+      };
+      page.drawLine({ start: left, end: bottom, ...stroke });
+      page.drawLine({ start: bottom, end: right, ...stroke });
+      return;
+    }
+
+    if (draw.kind === 'line') {
+      page.drawLine({
+        start: { x: draw.x1, y: draw.y1 },
+        end: { x: draw.x2, y: draw.y2 },
+        thickness: draw.thickness,
+        color: rgb(0, 0, 0),
+      });
+      return;
+    }
+
     const text = draw.value(context);
     if (!text) {
       return;
+    }
+    for (const ch of text) {
+      if (ch.trim() && !glyphs.charset.has(ch.codePointAt(0))) {
+        glyphs.missing.add(ch);
+      }
     }
 
     if (draw.kind === 'text') {

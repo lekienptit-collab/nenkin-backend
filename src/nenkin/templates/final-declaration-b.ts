@@ -1,4 +1,5 @@
 import {
+  deaccent,
   furiganaText,
   jpAddress,
   money,
@@ -54,7 +55,13 @@ export const finalDeclarationB: PaperTemplate = {
       maxWidth: 190,
       value: (c) => furiganaText(c.worker.nameFurigana),
     },
-    { kind: 'text', x: 100, y: 670, size: 12, value: (c) => c.worker.name },
+    {
+      kind: 'text',
+      x: 100,
+      y: 670,
+      size: 12,
+      value: (c) => deaccent(c.worker.name),
+    },
 
     // Người đại diện nộp thuế, ghi ngay dưới tên người khai. Người quay lại
     // Nhật tự khai thuế nên không có người đại diện — bỏ luôn dòng nhãn.
@@ -65,7 +72,13 @@ export const finalDeclarationB: PaperTemplate = {
       size: 9,
       value: (c) => (c.agent ? '納税管理人： ' : undefined),
     },
-    { kind: 'text', x: 99, y: 645, size: 9, value: (c) => c.agent?.name },
+    {
+      kind: 'text',
+      x: 99,
+      y: 645,
+      size: 9,
+      value: (c) => deaccent(c.agent?.name),
+    },
     {
       kind: 'text',
       x: 44,

@@ -77,6 +77,29 @@ export type Draw =
       ys: number[];
       perLine: number;
       value: Value;
+    }
+  /**
+   * Dấu tích chữ V trong ô vuông có góc dưới-trái (x, y), cạnh `size`. Vẽ bằng
+   * nét chứ không in ký tự "✔": font IPAex không có ký tự này nên ô bị in
+   * thành hình hộp ☒.
+   */
+  | {
+      kind: 'check';
+      page?: number;
+      x: number;
+      y: number;
+      size: number;
+      when?: (c: FillContext) => boolean;
+    }
+  /** Đường kẻ ngang/dọc, dùng khi mẫu thiếu dòng kẻ để ghi câu trả lời. */
+  | {
+      kind: 'line';
+      page?: number;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      thickness: number;
     };
 
 /** Giải giá trị toạ độ về số. */
@@ -134,7 +157,10 @@ export const dateParts = (iso?: string) =>
 
 /**
  * Bỏ dấu tiếng Việt: các ô chữ Latin trên mẫu Nhật chỉ nhận chữ không dấu,
- * và font dùng để in cũng không có sẵn glyph cho chữ có dấu.
+ * và font dùng để in cũng không có sẵn glyph cho chữ có dấu ("Ễ", "Ộ"...).
+ *
+ * NFC ở cuối để ghép lại chữ Kana có dấu ゛゜ ("グ" bị NFD tách thành
+ * "ク" + dấu rời) — tên ngân hàng/chi nhánh Nhật cũng đi qua hàm này.
  */
 export const deaccent = (v?: string) =>
   v
@@ -143,6 +169,7 @@ export const deaccent = (v?: string) =>
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/đ/g, 'd')
         .replace(/Đ/g, 'D')
+        .normalize('NFC')
     : v;
 
 /** Chỉ giữ chữ số. */
@@ -201,8 +228,12 @@ export const jpAddress = (w: WorkerEntity) =>
     .filter(Boolean)
     .join('') || undefined;
 
-/** Ghép địa chỉ Việt Nam theo thứ tự mẫu cũ dùng: số nhà - huyện - tỉnh - quốc gia. */
-export const vnAddress = (w: WorkerEntity) =>
+/**
+ * Ghép địa chỉ Việt Nam: số nhà, xã/phường, tỉnh, quốc gia — in hoa, không
+ * dấu. 委任状 dùng dấu " - " như mẫu cũ; 納税管理人の届出書 dùng ", " theo
+ * mẫu khách gửi ("SO NHA 58 TO DAN PHO NUM, PHUONG BAC GIANG, BAC NINH, VIET NAM").
+ */
+export const vnAddress = (w: WorkerEntity, separator = ' - ') =>
   [
     w.addressVnAddress,
     w.addressVnDistrict,
@@ -210,5 +241,6 @@ export const vnAddress = (w: WorkerEntity) =>
     w.country,
   ]
     .filter(Boolean)
-    .map((s) => deaccent(String(s)).toUpperCase())
-    .join(' - ') || undefined;
+    .map((s) => deaccent(String(s).trim()).toUpperCase())
+    .filter(Boolean)
+    .join(separator) || undefined;

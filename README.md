@@ -239,6 +239,8 @@ tính theo hệ của PDF: gốc ở góc dưới-trái tờ giấy, đơn vị 
 | `chars` | Điền từng ký tự vào các ô kẻ sẵn; `align: 'right'` để dồn phải cho ô tiền |
 | `lines` | Chuỗi dài tự xuống dòng, mỗi dòng một y |
 | `circle` | Khoanh tròn một lựa chọn in sẵn (niên hiệu, giới tính, loại tài khoản) |
+| `check` | Dấu tích chữ V vẽ bằng nét trong một ô vuông |
+| `line` | Kẻ thêm dòng khi mẫu thiếu dòng kẻ để ghi câu trả lời |
 
 Toạ độ `x`/`y` nhận cả hàm, dùng khi vị trí phụ thuộc dữ liệu — ví dụ vòng khoanh niên
 hiệu nằm ở dòng khác nhau cho 昭和 / 平成 / 令和.
@@ -278,6 +280,14 @@ Một vài quy ước rút ra từ hệ thống cũ, đã hiện thực sẵn:
     銀行 + 支店).
 - 第三表 và 第二表 ghi tên Katakana ở ô フリガナ, ngay trên họ tên.
 - Lệnh `text` có `maxWidth` thì chuỗi dài tự thu nhỏ cỡ chữ cho vừa ô.
+- **Font IPAex không có ký tự `✔`** (in ra thành hình hộp ☒) và không có chữ tiếng
+  Việt có dấu như `Ễ`, `Ộ`. Vì vậy dấu tích ở ô `No` của 脱退一時金請求書 được vẽ bằng nét
+  (kiểu `check`), và họ tên người lao động / người đại diện trên mọi tờ đều được bỏ dấu.
+  Còn ký tự nào font không có thì log backend báo `font không có ký tự …`.
+- 所得税・消費税の納税管理人の届出書 (theo mẫu khách gửi): mục 2 ghi địa chỉ ở Việt Nam
+  (in hoa không dấu, cách nhau bằng dấu phẩy), mục 3 ghi
+  `日本に不在のため、納税管理人にお任せいたします。` trên một dòng kẻ thêm. Năm xuất cảnh
+  in ở chỗ chữ 平成 đã che trắng, không đè lên chữ 年.
 
 ### Giấy tờ đính kèm
 

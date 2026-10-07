@@ -1,5 +1,6 @@
 import { BankAccountType } from 'src/common/constatns/master-data';
 import {
+  deaccent,
   digitsOnly,
   Draw,
   FillContext,
@@ -230,7 +231,13 @@ export const declarationB: PaperTemplate = {
       xs: FURIGANA_XS,
       value: (c) => furiganaBoxes(c.worker.nameFurigana, FURIGANA_XS.length),
     },
-    { kind: 'text', x: 324, y: 724, size: 12, value: (c) => c.worker.name },
+    {
+      kind: 'text',
+      x: 324,
+      y: 724,
+      size: 12,
+      value: (c) => deaccent(c.worker.name),
+    },
 
     // 世帯主の氏名 / 世帯主との続柄: người khai tự là chủ hộ.
     {
@@ -257,7 +264,13 @@ export const declarationB: PaperTemplate = {
       size: 7,
       value: (c) => (c.agent ? '納税管理人： ' : undefined),
     },
-    { kind: 'text', x: 125, y: 706, size: 7, value: (c) => c.agent?.name },
+    {
+      kind: 'text',
+      x: 125,
+      y: 706,
+      size: 7,
+      value: (c) => deaccent(c.agent?.name),
+    },
     {
       kind: 'text',
       x: 80,

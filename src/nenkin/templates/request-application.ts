@@ -139,7 +139,9 @@ export const requestApplication: PaperTemplate = {
     },
 
     // 3. 永住許可の有無 — luôn tích "No"; hệ thống chỉ phục vụ người đã về nước.
-    { kind: 'text', page: 0, x: 42, y: 417, size: 10, value: () => '✔' },
+    // Vẽ dấu V vào đúng ô vuông (39–54.8 × 413.9–428.9) thay vì in ký tự "✔"
+    // mà font không có.
+    { kind: 'check', page: 0, x: 39.4, y: 413.9, size: 15 },
 
     // 4. Họ tên, ngày sinh, quốc tịch, địa chỉ sau khi rời Nhật.
     {

@@ -1,5 +1,11 @@
 import { Gender } from 'src/common/constatns/master-data';
-import { digitsOnly, PaperTemplate, toWareki, vnAddress } from './types';
+import {
+  deaccent,
+  digitsOnly,
+  PaperTemplate,
+  toWareki,
+  vnAddress,
+} from './types';
 
 /**
  * Tâm vòng tròn khoanh niên hiệu trong cột 明治/大正/昭和/平成/令和 của ô ngày sinh.
@@ -54,7 +60,13 @@ export const entrustApplication: PaperTemplate = {
       size: 10,
       value: (c) => c.agent?.nameFurigana,
     },
-    { kind: 'text', x: 132, y: 690, size: 12, value: (c) => c.agent?.name },
+    {
+      kind: 'text',
+      x: 132,
+      y: 690,
+      size: 12,
+      value: (c) => deaccent(c.agent?.name),
+    },
     {
       kind: 'text',
       x: 437,
@@ -120,7 +132,13 @@ export const entrustApplication: PaperTemplate = {
       size: 12,
       value: (c) => c.worker.nameFurigana,
     },
-    { kind: 'text', x: 134, y: 500, size: 12, value: (c) => c.worker.name },
+    {
+      kind: 'text',
+      x: 134,
+      y: 500,
+      size: 12,
+      value: (c) => deaccent(c.worker.name),
+    },
     {
       kind: 'text',
       x: 128,

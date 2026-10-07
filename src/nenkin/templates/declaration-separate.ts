@@ -1,4 +1,5 @@
 import {
+  deaccent,
   digitsOnly,
   furiganaText,
   jpAddress,
@@ -60,7 +61,13 @@ export const declarationSeparate: PaperTemplate = {
       maxWidth: 185,
       value: (c) => furiganaText(c.worker.nameFurigana),
     },
-    { kind: 'text', x: 102, y: 677, size: 12, value: (c) => c.worker.name },
+    {
+      kind: 'text',
+      x: 102,
+      y: 677,
+      size: 12,
+      value: (c) => deaccent(c.worker.name),
+    },
 
     // Các ô "0" cố định của mẫu (thuế suất và số phải nộp đều bằng 0).
     { kind: 'text', x: 551, y: 509, size: 12, value: () => '0' },
