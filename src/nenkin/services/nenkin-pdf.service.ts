@@ -1,13 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { extname, join } from 'path';
+import { join } from 'path';
 import {
   LineCapStyle,
   PageSizes,
   PDFDocument,
   PDFFont,
-  PDFImage,
   PDFPage,
   rgb,
 } from 'pdf-lib';
@@ -15,6 +14,7 @@ import * as fontkitModule from '@pdf-lib/fontkit';
 import {
   NenkinServiceType,
   papersFor,
+  SCANNED_FIELD_LABELS,
   scannedPapersFor,
 } from 'src/common/constatns/master-data';
 import { AgentEntity } from 'src/entities/agent.entity';
@@ -24,11 +24,28 @@ import { WorkerEntity } from 'src/entities/worker.entity';
 import { UploadService } from 'src/uploads/uploads.service';
 import { PAPER_TEMPLATES } from '../templates';
 import { Draw, FillContext, resolveCoord } from '../templates/types';
+import {
+  AttachmentError,
+  AttachmentPart,
+  embedAttachment,
+} from './attachment-embedder';
 
 export interface GenerateResult {
   documents: GeneratedDocument[];
   /** URL file gộp cả bộ, undefined khi chưa sinh được giấy tờ nào. */
   mergedFileUrl?: string;
+  /** Ảnh/file giấy tờ đã tải lên nhưng không đưa được vào bộ hồ sơ. */
+  unreadableFiles: UnreadableFile[];
+}
+
+export interface UnreadableFile {
+  /** Tên giấy tờ đính kèm, ví dụ "Hộ chiếu". */
+  paper: string;
+  /** Trường lưu URL ảnh trên hồ sơ người lao động. */
+  field: string;
+  /** Tên ô ảnh trên form, ví dụ "Trang có dấu xuất cảnh". */
+  label: string;
+  reason: string;
 }
 
 export interface GeneratedDocument {
@@ -138,13 +155,18 @@ export class NenkinPdfService {
 
     // Giấy tờ đính kèm: không có mẫu để điền, chỉ đưa ảnh người lao động đã
     // tải lên vào các trang A4 rồi ghép vào cuối bộ hồ sơ.
+    const unreadableFiles: UnreadableFile[] = [];
     for (const scanned of scannedPapersFor(
       serviceType,
       context.procedure.caseType,
     )) {
-      const bytes = await this.imagesToPdf(
-        scanned.fields.map((f) => context.worker[f] as string | undefined),
+      const { bytes, unreadable } = await this.attachmentsToPdf(
+        context.worker,
+        scanned.fields,
         scanned.onePage,
+      );
+      unreadableFiles.push(
+        ...unreadable.map((u) => ({ paper: scanned.name, ...u })),
       );
       const sortOrder = results.length;
       if (!bytes) {
@@ -174,7 +196,7 @@ export class NenkinPdfService {
       filled.length > 0
         ? await this.saveMerged(context, serviceType, filled)
         : undefined;
-    return { documents: results, mergedFileUrl };
+    return { documents: results, mergedFileUrl, unreadableFiles };
   }
 
   private relativeDir(
@@ -213,46 +235,59 @@ export class NenkinPdfService {
   }
 
   /**
-   * Ghép các ảnh giấy tờ thành một file PDF: mặc định mỗi ảnh một trang A4,
-   * `onePage` thì xếp tất cả lên cùng một trang, từ trên xuống theo thứ tự.
-   * Trả về null khi không có ảnh nào đọc được.
+   * Ghép các file giấy tờ (ảnh, hoặc từng trang của file PDF) thành một file
+   * PDF: mặc định mỗi ảnh/trang một trang A4, `onePage` thì xếp tất cả lên
+   * cùng một trang, từ trên xuống theo thứ tự.
+   *
+   * File không đọc được thì bỏ qua và trả về trong `unreadable` để báo người
+   * dùng; `bytes` là null khi không còn ảnh nào dùng được.
    */
-  private async imagesToPdf(
-    imageUrls: (string | undefined)[],
+  private async attachmentsToPdf(
+    worker: WorkerEntity,
+    fields: string[],
     onePage = false,
-  ): Promise<Uint8Array | null> {
+  ): Promise<{
+    bytes: Uint8Array | null;
+    unreadable: Omit<UnreadableFile, 'paper'>[];
+  }> {
     const doc = await PDFDocument.create();
-    const images: PDFImage[] = [];
+    const parts: AttachmentPart[] = [];
+    const unreadable: Omit<UnreadableFile, 'paper'>[] = [];
 
-    for (const imageUrl of imageUrls) {
-      const fullPath = imageUrl
-        ? this.uploadService.resolvePublicUrl(imageUrl)
-        : null;
-      if (!fullPath) {
+    for (const field of fields) {
+      const url = worker[field] as string | undefined;
+      if (!url) {
         continue;
       }
-
-      const bytes = readFileSync(fullPath);
-      const ext = extname(fullPath).toLowerCase();
       try {
-        images.push(
-          ext === '.png'
-            ? await doc.embedPng(bytes)
-            : await doc.embedJpg(bytes),
+        const fullPath = this.uploadService.resolvePublicUrl(url);
+        if (!fullPath) {
+          throw new AttachmentError('Không tìm thấy file trên máy chủ');
+        }
+        parts.push(...(await embedAttachment(doc, readFileSync(fullPath))));
+      } catch (error) {
+        const known = error instanceof AttachmentError;
+        const reason = known ? error.message : 'Không đọc được nội dung file';
+        const detail = known ? error.detail : error;
+        this.logger.warn(
+          `Không đưa được "${url}" (${field}) vào PDF: ${reason}` +
+            (detail ? ` — ${detail}` : ''),
         );
-      } catch {
-        // File PDF hoặc định dạng ảnh không nhúng được thì bỏ qua ảnh đó.
-        this.logger.warn(`Không nhúng được ảnh "${imageUrl}" vào PDF`);
+        unreadable.push({
+          field,
+          label: SCANNED_FIELD_LABELS[field] ?? field,
+          reason,
+        });
       }
     }
 
-    if (images.length === 0) {
-      return null;
+    if (parts.length === 0) {
+      return { bytes: null, unreadable };
     }
-    for (const group of onePage ? [images] : images.map((i) => [i])) {
+    for (const group of onePage ? [parts] : parts.map((p) => [p])) {
       this.drawStacked(doc.addPage(PageSizes.A4), group);
     }
-    return doc.save();
+    return { bytes: await doc.save(), unreadable };
   }
 
   /**
@@ -260,30 +295,29 @@ export class NenkinPdfService {
    * cao bằng nhau, thu nhỏ giữ đúng tỉ lệ (không phóng to ảnh nhỏ), cả cụm
    * căn giữa trang.
    */
-  private drawStacked(page: PDFPage, images: PDFImage[]) {
+  private drawStacked(page: PDFPage, parts: AttachmentPart[]) {
     const margin = 40;
-    const gap = images.length > 1 ? 24 : 0;
+    const gap = parts.length > 1 ? 24 : 0;
     const maxWidth = page.getWidth() - margin * 2;
     const slotHeight =
-      (page.getHeight() - margin * 2 - gap * (images.length - 1)) /
-      images.length;
+      (page.getHeight() - margin * 2 - gap * (parts.length - 1)) / parts.length;
 
-    const sizes = images.map((image) => {
+    const sizes = parts.map((part) => {
       const scale = Math.min(
-        maxWidth / image.width,
-        slotHeight / image.height,
+        maxWidth / part.width,
+        slotHeight / part.height,
         1,
       );
-      return { width: image.width * scale, height: image.height * scale };
+      return { width: part.width * scale, height: part.height * scale };
     });
     const total =
-      sizes.reduce((sum, s) => sum + s.height, 0) + gap * (images.length - 1);
+      sizes.reduce((sum, s) => sum + s.height, 0) + gap * (parts.length - 1);
 
     // Toạ độ PDF tính từ mép dưới: ảnh đầu tiên (mặt trước) nằm trên cùng.
     let top = (page.getHeight() + total) / 2;
-    images.forEach((image, i) => {
+    parts.forEach((part, i) => {
       const { width, height } = sizes[i];
-      page.drawImage(image, {
+      part.draw(page, {
         x: (page.getWidth() - width) / 2,
         y: top - height,
         width,

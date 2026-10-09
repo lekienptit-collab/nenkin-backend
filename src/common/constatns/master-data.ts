@@ -550,6 +550,21 @@ export const SCANNED_PAPERS: Record<
   ],
 };
 
+/**
+ * Tên ô ảnh trên form người lao động, dùng khi báo ảnh nào không đưa được vào
+ * bộ hồ sơ. Đi kèm tên giấy tờ nên chỉ cần phân biệt các ảnh trong cùng tờ.
+ */
+export const SCANNED_FIELD_LABELS: Record<string, string> = {
+  passportFirstPage: 'Trang đầu',
+  passportSecondPage: 'Trang hai',
+  passportStampPage: 'Trang có dấu xuất cảnh',
+  residenceCardFrontImage: 'Ảnh mặt trước',
+  residenceCardBackImage: 'Ảnh mặt sau',
+  nenkinBookImage: 'Ảnh sổ Nenkin trang đầu',
+  bankImage: 'Trang đầu',
+  bankImageBack: 'Trang hai',
+};
+
 /** Giấy tờ đính kèm của một lần thủ tục, đã lọc theo trường hợp của NLĐ. */
 export const scannedPapersFor = (
   serviceType: NenkinServiceType,

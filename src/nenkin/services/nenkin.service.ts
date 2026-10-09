@@ -124,25 +124,34 @@ export class NenkinService {
       );
     }
 
-    await this.regenerateDocuments(procedure, worker, agent);
+    const unreadableFiles = await this.regenerateDocuments(
+      procedure,
+      worker,
+      agent,
+    );
 
     return {
       ...(await this.getOne(procedure.id)),
       // Vẫn cho tạo hồ sơ khi thiếu thông tin (giống hệ thống cũ), nhưng báo
       // rõ còn thiếu gì để người dùng bổ sung.
       missingFields: getMissingFields(worker, payload.serviceType),
+      // Ảnh đã tải lên nhưng không đưa được vào bộ hồ sơ (PDF có mật khẩu,
+      // file hỏng...), để người dùng biết mà tải lại.
+      unreadableFiles,
     };
   }
 
+  /** Sinh lại bộ giấy tờ, trả về các file đính kèm không đọc được. */
   private async regenerateDocuments(
     procedure: NenkinProcedureEntity,
     worker: WorkerEntity,
     agent: AgentEntity,
   ) {
-    const { documents, mergedFileUrl } = await this.pdfService.generate(
-      { procedure, worker, agent },
-      procedure.serviceType,
-    );
+    const { documents, mergedFileUrl, unreadableFiles } =
+      await this.pdfService.generate(
+        { procedure, worker, agent },
+        procedure.serviceType,
+      );
 
     await this.documentRepo.delete({ procedureId: procedure.id });
     await this.documentRepo.save(
@@ -153,6 +162,7 @@ export class NenkinService {
     await this.procedureRepo.update(procedure.id, {
       mergedFileUrl: mergedFileUrl ?? null,
     });
+    return unreadableFiles;
   }
 
   async getDocument(id: number) {

@@ -38,6 +38,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "dotenv": "^16.0.0",
+    "heic-decode": "^2.1.0",
     "mysql2": "^3.9.7",
     "passport": "^0.5.2",
     "passport-jwt": "^4.0.0",
@@ -45,6 +46,7 @@
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.4.0",
+    "sharp": "^0.34.5",
     "swagger-ui-express": "^4.3.0",
     "typeorm": "0.3"
   },
@@ -89,7 +91,8 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^src/(.*)$": "<rootDir>/$1"
+      "^src/(.*)$": "<rootDir>/$1",
+      "^@img/sharp-([a-z0-9-]+)/sharp\\.node$": "@img/sharp-$1/lib/sharp-$1.node"
     }
   }
 }
